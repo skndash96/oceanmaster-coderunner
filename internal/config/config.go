@@ -1,5 +1,7 @@
 package config
 
+import "os"
+
 type JailConfig struct {
 	Hostname          string
 	Cwd               string
@@ -17,17 +19,20 @@ type Config struct {
 	NsjailCfgPath      string
 	WrapperPyPath      string
 	HostSubmissionPath string
+	IsProd             bool
 
-	Devices []string
-	Jail    *JailConfig
+	Jail *JailConfig
 }
 
 func New() *Config {
+	isProd := os.Getenv("PROD") == "true"
+
 	return &Config{
-		NsjailPath:         "/nsjail",
-		NsjailCfgPath:      "/nsjail.cfg",
+		NsjailPath:         "/app/nsjail",
+		NsjailCfgPath:      "/app/nsjail.cfg",
 		WrapperPyPath:      "/wrapper.py",
 		HostSubmissionPath: "/tmp/submission",
+		IsProd:             isProd,
 		Jail: &JailConfig{
 			SubmissionPath:    "/submission",
 			Hostname:          "jail",
@@ -38,6 +43,5 @@ func New() *Config {
 			CGroupCpuMsPerSec: 200,               // 20% CPU
 			TmpfsSize:         100 * 1024 * 1024, // 100 MB
 		},
-		Devices: []string{"null", "zero", "random", "urandom"}, // devices might be reqd for python
 	}
 }

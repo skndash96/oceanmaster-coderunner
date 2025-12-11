@@ -1,0 +1,8 @@
+services:
+    code-runner:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            - PROD=true
+        privileged: true

@@ -1,3 +1,3 @@
-#import submission
+import submission
 
-print("Hello, World!")
+submission.x()

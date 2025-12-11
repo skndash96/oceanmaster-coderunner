@@ -27,16 +27,16 @@ COPY wrapper.py /
 
 # Build image
 FROM busybox:1.36.1-glibc AS image
-RUN mkdir -p /app
+RUN mkdir -p /app/cgroup/unified /tmp/submission
 COPY --link --from=nsjail /usr/lib/*-linux-gnu/libprotobuf.so.32 /usr/lib/*-linux-gnu/libnl-route-3.so.200 \
   /lib/*-linux-gnu/libnl-3.so.200 /lib/*-linux-gnu/libz.so.1 /usr/lib/*-linux-gnu/libstdc++.so.6 \
   /lib/*-linux-gnu/libgcc_s.so.1 /lib/
 COPY --link --from=run /usr/lib/*-linux-gnu/libseccomp.so.2 /usr/lib/*-linux-gnu/libgmp.so.10 /lib/
-COPY --link --from=nsjail /src/nsjail /
-COPY --link --from=run /src/runner /
+COPY --link --from=nsjail /src/nsjail /app/nsjail
+COPY --link --from=run /src/runner /app/runner
 
 # Final image
 FROM scratch
 COPY --from=image / /
 COPY --from=jail / /srv
-CMD ["/runner"]
+CMD ["/app/runner"]

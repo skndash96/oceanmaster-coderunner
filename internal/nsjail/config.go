@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func GetNsjailConfig(c *config.Config) (*proto_nsjail.NsJailConfig, error) {
+func GetMsg(c *config.Config) (*proto_nsjail.NsJailConfig, error) {
 	msg := &proto_nsjail.NsJailConfig{}
 
 	msg.Mode = proto_nsjail.Mode_ONCE.Enum()
@@ -24,12 +24,21 @@ func GetNsjailConfig(c *config.Config) (*proto_nsjail.NsJailConfig, error) {
 	msg.CgroupPidsMax = proto.Uint64(c.Jail.CGroupPidsMax)
 	msg.CgroupMemMax = proto.Uint64(c.Jail.CGroupMemMax)
 	msg.CgroupCpuMsPerSec = proto.Uint32(c.Jail.CGroupCpuMsPerSec)
+	msg.Envar = []string{
+		fmt.Sprintf("PYTHONPATH=%s", c.Jail.SubmissionPath),
+	}
+
+	if c.IsProd {
+		msg.LogLevel = proto_nsjail.LogLevel_ERROR.Enum()
+	} else {
+		msg.LogLevel = proto_nsjail.LogLevel_DEBUG.Enum()
+	}
 
 	msg.Hostname = proto.String(c.Jail.Hostname)
 	msg.Cwd = proto.String(c.Jail.Cwd)
 
 	msg.ExecBin = &proto_nsjail.Exe{
-		Path: proto.String("python3"),
+		Path: proto.String("/usr/local/bin/python3"),
 		Arg:  []string{"wrapper.py"},
 	}
 

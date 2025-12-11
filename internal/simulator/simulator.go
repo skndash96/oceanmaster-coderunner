@@ -2,6 +2,7 @@ package simulator
 
 import (
 	"io"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -32,42 +33,42 @@ func NewMatch(matchID, player1, player2 string, player1Code, player2Code string)
 	}
 }
 
-func Simulate(cfg *config.Config, m *Match) {
-	p1Dir := path.Join(cfg.HostSubmissionPath, m.matchID, m.player1)
-	p2Dir := path.Join(cfg.HostSubmissionPath, m.matchID, m.player2)
-
-	if err := os.MkdirAll(p1Dir, 0777); err != nil {
-		panic(err)
+func Simulate(cfg *config.Config, m *Match) error {
+	p1Dir, err := os.MkdirTemp(cfg.HostSubmissionPath, "p1-*")
+	if err != nil {
+		return err
 	}
-	if err := os.MkdirAll(p2Dir, 0777); err != nil {
-		panic(err)
+
+	p2Dir, err := os.MkdirTemp(cfg.HostSubmissionPath, "p2-*")
+	if err != nil {
+		return err
 	}
 
 	p1File, err := os.Create(path.Join(p1Dir, "submission.py"))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	p2File, err := os.Create(path.Join(p2Dir, "submission.py"))
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	p1Code, err := getPlayerCode(m.player1Code)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	p2Code, err := getPlayerCode(m.player2Code)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	_, err = io.Copy(p1File, p1Code)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	_, err = io.Copy(p2File, p2Code)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	p1 := sandbox.NewSandbox(cfg, p1Dir)
@@ -75,11 +76,11 @@ func Simulate(cfg *config.Config, m *Match) {
 
 	err = p1.Start()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	err = p2.Start()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// TODO: Convert to Goroutine
@@ -101,9 +102,19 @@ func Simulate(cfg *config.Config, m *Match) {
 			panic(err)
 		}
 	}()
+
+	return nil
 }
 
-func getPlayerCode(URL string) (io.Reader, error) {
-	// TODO: Implement
-	return strings.NewReader("print('a')"), nil
+func getPlayerCode(s string) (io.Reader, error) {
+	if strings.HasPrefix(s, "http") {
+		resp, err := http.Get(s)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		return resp.Body, nil
+	}
+
+	return strings.NewReader(s), nil
 }
