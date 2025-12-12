@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/delta/code-runner/internal/config"
 	"github.com/delta/code-runner/internal/sandbox"
@@ -18,102 +19,102 @@ type match struct {
 }
 
 func (m *match) Start(cfg *config.Config) error {
-	gameCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	matchCtx, cancelMatch := context.WithCancel(context.Background())
+	defer cancelMatch()
 
-	s1, err := sandbox.NewSandbox(gameCtx, cfg.NsjailPath, cfg.NsjailCfgPath, m.p1Dir, cfg.JailSubmissionPath)
+	s1, err := sandbox.NewSandbox(matchCtx, cfg.NsjailPath, cfg.NsjailCfgPath, m.p1Dir, cfg.JailSubmissionPath)
 	if err != nil {
 		return err
 	}
 	defer s1.Destroy()
 
-	s2, err := sandbox.NewSandbox(gameCtx, cfg.NsjailPath, cfg.NsjailCfgPath, m.p2Dir, cfg.JailSubmissionPath)
+	s2, err := sandbox.NewSandbox(matchCtx, cfg.NsjailPath, cfg.NsjailCfgPath, m.p2Dir, cfg.JailSubmissionPath)
 	if err != nil {
 		return err
 	}
 	defer s2.Destroy()
 
-	gameState := []int{}
-	isP1Turn := true
-
-	// --------------
-	// after this point, failure is probably due to the user's code
-	// or the sandbox environment
-	// so log properly and let the user know
-
-	go func() {
-		for {
-			data, err := s1.RecvError()
-			if err != nil {
-				break
-			}
-			fmt.Printf("[ERROR] p1: %v", string(data))
-		}
-	}()
-
-	go func() {
-		for {
-			data, err := s2.RecvError()
-			if err != nil {
-				break
-			}
-			fmt.Printf("[ERROR] p2: %v", string(data))
-		}
-	}()
-
-	// its not required to start a goroutine
-	// for each sandbox coz we'd be taking turns
-	// so only one at a time
+	go streamErrors(matchCtx, "p1", s1)
+	go streamErrors(matchCtx, "p2", s2)
 
 	if err := s1.Start(); err != nil {
-		return err
+		return fmt.Errorf("p1 failed to start: %w", err)
 	}
 	if err := s2.Start(); err != nil {
-		return err
+		return fmt.Errorf("p2 failed to start: %w", err)
 	}
 
-	tick := 0
+	var (
+		gameState []int = []int{}
+		isP1Turn  = true
+		tick      = 0
+	)
 
-	for {
+	for tick < 30 {
 		tick++
+		fmt.Printf("Tick %d\n", tick)
 
-		fmt.Println("Sending state...")
+		turnCtx, cancelTurn := context.WithTimeout(matchCtx, time.Duration(cfg.Jail.TurnTimeout))
+		actions := []int{}
+		var turnErr error
 
-		var actions []int
 		if isP1Turn {
-			err = s1.Send(gameState)
-			if err != nil {
-				return err
-			}
-			fmt.Println("Waiting for p1...")
-			err = s1.RecvOutput(&actions)
+			fmt.Println("Sending state to p1")
+			turnErr = doTurn(turnCtx, s1, gameState, &actions)
 		} else {
-			err = s2.Send(gameState)
-			if err != nil {
-				return err
-			}
-			fmt.Println("Waiting for p2...")
-			err = s2.RecvOutput(&actions)
+			fmt.Println("Sending state to p2")
+			turnErr = doTurn(turnCtx, s2, gameState, &actions)
 		}
 
-		if err != nil {
-			return err
+		cancelTurn()
+
+		if turnErr != nil {
+			return fmt.Errorf("bot turn failed: %v %w", isP1Turn, turnErr)
 		}
 
-		fmt.Println("Received actions:", actions)
-
-		// TODO: Validate actions
-
+		fmt.Println("Actions:", actions)
 		gameState = slices.Concat(gameState, actions)
 		isP1Turn = !isP1Turn
-
-		fmt.Println("Tick", tick, "Turn", isP1Turn, len(gameState), gameState[len(gameState)-1])
-
-		if tick > 30 {
-			fmt.Println("Game over!")
-			break
-		}
 	}
 
+	fmt.Println("Match complete.")
 	return nil
+}
+
+func doTurn(ctx context.Context, s *sandbox.Sandbox, state []int, out *[]int) error {
+	if err := s.Send(state); err != nil {
+		return fmt.Errorf("send error: %w", err)
+	}
+
+	type result struct {
+		err error
+	}
+
+	ch := make(chan result, 1)
+	go func() {
+		err := s.RecvOutput(out)
+		ch <- result{err: err}
+	}()
+
+	select {
+	case r := <-ch:
+		return r.err
+	case <-ctx.Done():
+		return fmt.Errorf("turn timeout: %w", ctx.Err())
+	}
+}
+
+func streamErrors(ctx context.Context, label string, s *sandbox.Sandbox) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			data, err := s.RecvError()
+			if err != nil {
+				return
+			}
+			fmt.Printf("[ERROR] %s: %s\n", label, string(data))
+		}
+	}
 }

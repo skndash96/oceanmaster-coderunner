@@ -1,11 +1,15 @@
 package config
 
-import "os"
+import (
+	"os"
+	"time"
+)
 
 type JailConfig struct {
 	Hostname          string
 	Cwd               string
 	TimeLimit         uint32
+	TurnTimeout       time.Duration
 	CGroupPidsMax     uint64
 	CGroupMemMax      uint64
 	CGroupCpuMsPerSec uint32
@@ -37,6 +41,7 @@ func New() *Config {
 			Hostname:          "jail",
 			Cwd:               "/",
 			TimeLimit:         5 * 60 * 1000,     // 5 minutes
+			TurnTimeout:       time.Duration(10 * time.Second),         // 10 seconds
 			CGroupPidsMax:     10,                // 10 processes
 			CGroupMemMax:      100 * 1024 * 1024, // 100 MB
 			CGroupCpuMsPerSec: 200,               // 20% CPU

@@ -1,11 +1,13 @@
 package manager
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/delta/code-runner/internal/config"
 )
@@ -13,12 +15,14 @@ import (
 type GameManager struct {
 	cfg     *config.Config
 	matches map[string]*match
+	mu      sync.Mutex
 }
 
 func NewGameManager(cfg *config.Config) *GameManager {
 	return &GameManager{
 		cfg:     cfg,
-		matches: map[string]*match{},
+		matches: make(map[string]*match),
+		mu:      sync.Mutex{},
 	}
 }
 
@@ -27,21 +31,17 @@ func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
 	p2Dir := path.Join(gm.cfg.HostSubmissionPath, ID, "p2")
 
 	if err := os.MkdirAll(p1Dir, 0700); err != nil {
-		return err
+		return fmt.Errorf("mkdir p1: %w", err)
 	}
-	defer os.RemoveAll(p1Dir)
-
 	if err := os.MkdirAll(p2Dir, 0700); err != nil {
-		return err
+		return fmt.Errorf("mkdir p2: %w", err)
 	}
-	defer os.RemoveAll(p2Dir)
 
 	if err := savePlayerCode(p1Code, path.Join(p1Dir, "submission.py")); err != nil {
-		return err
+		return fmt.Errorf("save p1 code: %w", err)
 	}
-
 	if err := savePlayerCode(p2Code, path.Join(p2Dir, "submission.py")); err != nil {
-		return err
+		return fmt.Errorf("save p2 code: %w", err)
 	}
 
 	m := &match{
@@ -52,45 +52,42 @@ func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
 		p2Dir: p2Dir,
 	}
 
+	gm.mu.Lock()
 	gm.matches[ID] = m
-	defer func() {
-		delete(gm.matches, ID)
-	}()
+	gm.mu.Unlock()
 
 	err := m.Start(gm.cfg)
 
-	if err != nil {
-		return err
-	}
+	gm.mu.Lock()
+	delete(gm.matches, ID)
+	gm.mu.Unlock()
 
-	return nil
+	_ = os.RemoveAll(m.p1Dir)
+	_ = os.RemoveAll(m.p2Dir)
+
+	return err
 }
 
-func savePlayerCode(s string, path string) error {
-	f, err := os.Create(path)
+func savePlayerCode(s string, dst string) error {
+	f, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	var content io.ReadCloser
+	var src io.ReadCloser
 
-	if strings.HasPrefix(s, "http") {
+	if strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") {
 		resp, err := http.Get(s)
 		if err != nil {
 			return err
 		}
-
-		content = resp.Body
-		defer content.Close()
+		src = resp.Body
 	} else {
-		content = io.NopCloser(strings.NewReader(s))
+		src = io.NopCloser(strings.NewReader(s))
 	}
+	defer src.Close()
 
-	_, err = io.Copy(f, content)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err = io.Copy(f, src)
+	return err
 }
