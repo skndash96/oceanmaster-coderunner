@@ -74,12 +74,12 @@ func GetMsg(c *config.Config) (*proto_nsjail.NsJailConfig, error) {
 	return msg, nil
 }
 
-func Write(c *config.Config, msg *proto_nsjail.NsJailConfig) error {
+func Write(path string, msg *proto_nsjail.NsJailConfig) error {
 	content, err := prototext.Marshal(msg)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(c.NsjailCfgPath, content, 0644); err != nil {
+	if err := os.WriteFile(path, content, 0644); err != nil {
 		return err
 	}
 	return nil

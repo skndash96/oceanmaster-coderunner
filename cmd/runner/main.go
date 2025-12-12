@@ -6,8 +6,8 @@ import (
 
 	"github.com/delta/code-runner/internal/cgroup"
 	"github.com/delta/code-runner/internal/config"
+	"github.com/delta/code-runner/internal/manager"
 	"github.com/delta/code-runner/internal/nsjail"
-	"github.com/delta/code-runner/internal/simulator"
 )
 
 func run() error {
@@ -36,25 +36,16 @@ func run() error {
 		return err
 	}
 
-	if err = nsjail.Write(cfg, msg); err != nil {
+	if err = nsjail.Write(cfg.NsjailCfgPath, msg); err != nil {
 		return err
 	}
 
-	// TODO: Create RabbitMQ Consumer
-	// TODO: Pass incoming matches to simulator
+	manager := manager.NewGameManager(cfg)
 
-	// example test
-	// this wud be started in a goroutine
-	code := `
-import numpy
-import random
+	// TODO: Create RabbitMQ Consumer (max 20 or so concurrency)
+	// TODO: Pass incoming matches to game manager
+	err = manager.NewMatch("12", "player1", "player2", egCode, egCode)
 
-def x():
-	print("Hello, World!")
-	print(numpy.random.rand(3, 3))
-	print(random.random())
-	`
-	err = simulator.Simulate(cfg, simulator.NewMatch("12", "player1", "player2", code, code))
 	if err != nil {
 		return fmt.Errorf("Failed to simulate match %v", err)
 	}
