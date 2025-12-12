@@ -1,13 +1,11 @@
 package manager
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/delta/code-runner/internal/config"
 )
@@ -19,30 +17,30 @@ type GameManager struct {
 
 func NewGameManager(cfg *config.Config) *GameManager {
 	return &GameManager{
-		cfg: cfg,
+		cfg:     cfg,
 		matches: map[string]*match{},
 	}
 }
 
 func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
-	st := time.Now()
-	p1Dir, err := os.MkdirTemp(gm.cfg.HostSubmissionPath, "p1-*")
-	if err != nil {
+	p1Dir := path.Join(gm.cfg.HostSubmissionPath, ID, "p1")
+	p2Dir := path.Join(gm.cfg.HostSubmissionPath, ID, "p2")
+
+	if err := os.MkdirAll(p1Dir, 0700); err != nil {
 		return err
 	}
 	defer os.RemoveAll(p1Dir)
 
-	p2Dir, err := os.MkdirTemp(gm.cfg.HostSubmissionPath, "p2-*")
-	if err != nil {
+	if err := os.MkdirAll(p2Dir, 0700); err != nil {
 		return err
 	}
 	defer os.RemoveAll(p2Dir)
 
-	if err = savePlayerCode(p1Code, path.Join(p1Dir, "submission.py")); err != nil {
+	if err := savePlayerCode(p1Code, path.Join(p1Dir, "submission.py")); err != nil {
 		return err
 	}
 
-	if err = savePlayerCode(p2Code, path.Join(p2Dir, "submission.py")); err != nil {
+	if err := savePlayerCode(p2Code, path.Join(p2Dir, "submission.py")); err != nil {
 		return err
 	}
 
@@ -59,11 +57,8 @@ func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
 		delete(gm.matches, ID)
 	}()
 
-	fmt.Println("START GAME",time.Since(st))
+	err := m.Start(gm.cfg)
 
-	// TODO: run this in goroutine
-	err = m.Start(gm.cfg)
-	fmt.Println("END GAME", time.Since(st))
 	if err != nil {
 		return err
 	}

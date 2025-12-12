@@ -32,12 +32,22 @@ func checkExists(path string) (bool, error) {
 	return false, err
 }
 
-func Unshare() error {
+func UnshareAndMount() (Cgroup, error) {
 	// we may already be in a cgroup namespace, but unsharing again is ok
 	if err := unix.Unshare(unix.CLONE_NEWCGROUP); err != nil {
-		return fmt.Errorf("unshare cgroup: %w", err)
+		return nil, fmt.Errorf("unshare cgroup: %w", err)
 	}
-	return nil
+
+	cg, err := ReadCgroup()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cg.Mount(); err != nil {
+		return nil, err
+	}
+
+	return cg, nil
 }
 
 func ReadCgroup() (Cgroup, error) {

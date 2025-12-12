@@ -10,8 +10,6 @@ type JailConfig struct {
 	CGroupMemMax      uint64
 	CGroupCpuMsPerSec uint32
 	TmpfsSize         uint64
-
-	SubmissionPath string
 }
 
 type Config struct {
@@ -19,6 +17,7 @@ type Config struct {
 	NsjailCfgPath      string
 	WrapperPyPath      string
 	HostSubmissionPath string
+	JailSubmissionPath string
 	IsProd             bool
 
 	Jail *JailConfig
@@ -32,9 +31,9 @@ func New() *Config {
 		NsjailCfgPath:      "/app/nsjail.cfg",
 		WrapperPyPath:      "/wrapper.py",
 		HostSubmissionPath: "/tmp/submission",
+		JailSubmissionPath: "/submission",
 		IsProd:             isProd,
 		Jail: &JailConfig{
-			SubmissionPath:    "/submission",
 			Hostname:          "jail",
 			Cwd:               "/",
 			TimeLimit:         5 * 60 * 1000,     // 5 minutes

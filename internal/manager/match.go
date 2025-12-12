@@ -1,9 +1,9 @@
 package manager
 
 import (
+	"context"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/delta/code-runner/internal/config"
 	"github.com/delta/code-runner/internal/sandbox"
@@ -18,16 +18,16 @@ type match struct {
 }
 
 func (m *match) Start(cfg *config.Config) error {
-	tm := time.Now()
-	fmt.Println("Starting match...")
+	gameCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	s1, err := sandbox.NewSandbox(cfg, m.p1Dir)
+	s1, err := sandbox.NewSandbox(gameCtx, cfg.NsjailPath, cfg.NsjailCfgPath, m.p1Dir, cfg.JailSubmissionPath)
 	if err != nil {
 		return err
 	}
 	defer s1.Destroy()
 
-	s2, err := sandbox.NewSandbox(cfg, m.p2Dir)
+	s2, err := sandbox.NewSandbox(gameCtx, cfg.NsjailPath, cfg.NsjailCfgPath, m.p2Dir, cfg.JailSubmissionPath)
 	if err != nil {
 		return err
 	}
@@ -36,10 +36,15 @@ func (m *match) Start(cfg *config.Config) error {
 	gameState := []int{}
 	isP1Turn := true
 
+	// --------------
+	// after this point, failure is probably due to the user's code
+	// or the sandbox environment
+	// so log properly and let the user know
+
 	go func() {
 		for {
-			data := s1.RecvError()
-			if data == nil {
+			data, err := s1.RecvError()
+			if err != nil {
 				break
 			}
 			fmt.Printf("[ERROR] p1: %v", string(data))
@@ -48,8 +53,8 @@ func (m *match) Start(cfg *config.Config) error {
 
 	go func() {
 		for {
-			data := s2.RecvError()
-			if data == nil {
+			data, err := s2.RecvError()
+			if err != nil {
 				break
 			}
 			fmt.Printf("[ERROR] p2: %v", string(data))
@@ -60,15 +65,12 @@ func (m *match) Start(cfg *config.Config) error {
 	// for each sandbox coz we'd be taking turns
 	// so only one at a time
 
-
 	if err := s1.Start(); err != nil {
 		return err
 	}
 	if err := s2.Start(); err != nil {
 		return err
 	}
-
-	fmt.Println("START SANDBOX", time.Since(tm))
 
 	tick := 0
 
@@ -107,13 +109,11 @@ func (m *match) Start(cfg *config.Config) error {
 
 		fmt.Println("Tick", tick, "Turn", isP1Turn, len(gameState), gameState[len(gameState)-1])
 
-		if tick > 1000 {
+		if tick > 30 {
 			fmt.Println("Game over!")
 			break
 		}
 	}
-
-	fmt.Println("END SANDBOX", time.Since(tm))
 
 	return nil
 }

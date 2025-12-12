@@ -13,30 +13,13 @@ import (
 func run() error {
 	cfg := config.New()
 
-	err := cgroup.Unshare()
+	cg, err := cgroup.UnshareAndMount()
 	if err != nil {
 		return err
 	}
 
-	cg, err := cgroup.ReadCgroup()
+	_, err = nsjail.WriteConfig(cfg, cg)
 	if err != nil {
-		return err
-	}
-
-	if err := cg.Mount(); err != nil {
-		return err
-	}
-
-	msg, err := nsjail.GetMsg(cfg)
-	if err != nil {
-		return err
-	}
-
-	if err = cg.SetConfig(msg); err != nil {
-		return err
-	}
-
-	if err = nsjail.Write(cfg.NsjailCfgPath, msg); err != nil {
 		return err
 	}
 
@@ -44,6 +27,7 @@ func run() error {
 
 	// TODO: Create RabbitMQ Consumer (max 20 or so concurrency)
 	// TODO: Pass incoming matches to game manager
+	// Make sure new match is called in a goroutine
 	err = manager.NewMatch("12", "player1", "player2", egCode, egCode)
 
 	if err != nil {

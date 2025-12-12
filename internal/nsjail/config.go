@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/delta/code-runner/internal/cgroup"
 	"github.com/delta/code-runner/internal/config"
 	"github.com/delta/code-runner/internal/nsjail/proto_nsjail"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
 
-func GetMsg(c *config.Config) (*proto_nsjail.NsJailConfig, error) {
+func WriteConfig(c *config.Config, cg cgroup.Cgroup) (*proto_nsjail.NsJailConfig, error) {
 	msg := &proto_nsjail.NsJailConfig{}
 
 	msg.Mode = proto_nsjail.Mode_ONCE.Enum()
@@ -21,11 +22,16 @@ func GetMsg(c *config.Config) (*proto_nsjail.NsJailConfig, error) {
 	msg.RlimitCpuType = proto_nsjail.RLimit_HARD.Enum()
 	msg.RlimitFsizeType = proto_nsjail.RLimit_HARD.Enum()
 	msg.RlimitNofileType = proto_nsjail.RLimit_HARD.Enum()
+
 	msg.CgroupPidsMax = proto.Uint64(c.Jail.CGroupPidsMax)
 	msg.CgroupMemMax = proto.Uint64(c.Jail.CGroupMemMax)
 	msg.CgroupCpuMsPerSec = proto.Uint32(c.Jail.CGroupCpuMsPerSec)
+
+	// Set the respective v1 or v2 cgroup configuration
+	cg.SetConfig(msg)
+
 	msg.Envar = []string{
-		fmt.Sprintf("PYTHONPATH=%s", c.Jail.SubmissionPath),
+		fmt.Sprintf("PYTHONPATH=%s", c.JailSubmissionPath),
 	}
 
 	if c.IsProd {
@@ -71,10 +77,15 @@ func GetMsg(c *config.Config) (*proto_nsjail.NsJailConfig, error) {
 		return nil, fmt.Errorf("check /srv/proc: %w", err)
 	}
 
+	err = write(c.NsjailCfgPath, msg)
+	if err != nil {
+		return nil, err
+	}
+
 	return msg, nil
 }
 
-func Write(path string, msg *proto_nsjail.NsJailConfig) error {
+func write(path string, msg *proto_nsjail.NsJailConfig) error {
 	content, err := prototext.Marshal(msg)
 	if err != nil {
 		return err

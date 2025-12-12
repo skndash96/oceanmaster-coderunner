@@ -2,33 +2,32 @@ package sandbox
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os/exec"
-	"slices"
-
-	"github.com/delta/code-runner/internal/config"
 )
 
 type Sandbox struct {
-	cfg           *config.Config
+	ctx           context.Context
 	submissionDir string
 	cmd           *exec.Cmd
 	stdin         io.WriteCloser
 	stdout        io.ReadCloser
 	stderr        io.ReadCloser
-	outScanner    *bufio.Scanner
-	errScanner    *bufio.Scanner
+	outScanner    *bufio.Reader
+	errScanner    *bufio.Reader
 }
 
-func NewSandbox(cfg *config.Config, submissionDir string) (*Sandbox, error) {
-	cmd := exec.Command(
-		cfg.NsjailPath,
+func NewSandbox(ctx context.Context, nsjailPath, nsjailCfgPath, submissionDir, jailSubmissionDir string) (*Sandbox, error) {
+	cmd := exec.CommandContext(
+		ctx,
+		nsjailPath,
 		"-C",
-		cfg.NsjailCfgPath,
+		nsjailCfgPath,
 		"--bindmount_ro",
-		fmt.Sprintf("%s:%s", submissionDir, cfg.Jail.SubmissionPath),
+		fmt.Sprintf("%s:%s", submissionDir, jailSubmissionDir),
 	)
 
 	stdin, err := cmd.StdinPipe()
@@ -47,14 +46,13 @@ func NewSandbox(cfg *config.Config, submissionDir string) (*Sandbox, error) {
 	}
 
 	s := &Sandbox{
-		cfg:           cfg,
 		submissionDir: submissionDir,
 		cmd:           cmd,
 		stdin:         stdin,
 		stdout:        stdout,
 		stderr:        stderr,
-		outScanner:    bufio.NewScanner(stdout),
-		errScanner:    bufio.NewScanner(stderr),
+		outScanner:    bufio.NewReader(stdout),
+		errScanner:    bufio.NewReader(stderr),
 	}
 
 	return s, nil
@@ -69,14 +67,14 @@ func (s *Sandbox) Start() error {
 }
 
 func (s *Sandbox) Send(inp any) error {
-	str, err := json.Marshal(inp)
+	json, err := json.Marshal(inp)
 	if err != nil {
 		return err
 	}
 
-	str = slices.Concat(str, []byte("\n"))
+	json = append(json, '\n')
 
-	_, err = s.stdin.Write(str)
+	_, err = s.stdin.Write(json)
 	if err != nil {
 		return err
 	}
@@ -85,31 +83,21 @@ func (s *Sandbox) Send(inp any) error {
 }
 
 func (s *Sandbox) RecvOutput(v any) error {
-	if s.outScanner.Scan() {
-		err := json.Unmarshal(s.outScanner.Bytes(), v)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	err := s.outScanner.Err()
+	bytes, err := scan(s.outScanner)
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf("Reached EOF")
+
+	err = json.Unmarshal(bytes, v)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *Sandbox) RecvError() []byte {
-	if s.errScanner.Scan() {
-		return s.errScanner.Bytes()
-	}
-	return nil
-	// err := s.errScanner.Err()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// return nil, fmt.Errorf("Reached EOF")
+func (s *Sandbox) RecvError() ([]byte, error) {
+	return scan(s.errScanner)
 }
 
 func (s *Sandbox) Destroy() error {
@@ -125,9 +113,19 @@ func (s *Sandbox) Destroy() error {
 		return err
 	}
 
-	if err := s.cmd.Wait(); err != nil {
-		return err
+	if s.cmd.Process != nil {
+		if err := s.cmd.Process.Kill(); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func scan(b *bufio.Reader) ([]byte, error) {
+	bytes, err := b.ReadBytes('\n')
+	if err != nil {
+		return nil, err
+	}
+	return bytes, err
 }

@@ -8,7 +8,14 @@ RUN apt-get update && \
 COPY nsjail .
 RUN make -j
 
-# Build runner
+# Build python mount
+FROM python:3.12-slim AS jail
+RUN pip install --no-cache-dir numpy && \
+  mkdir /submission && \
+  touch /submission/main.py
+COPY wrapper.py /
+
+# Build go runner
 FROM golang:1.24.0-bookworm AS run
 WORKDIR /src
 RUN apt-get update && apt-get install -y libseccomp-dev libgmp-dev
@@ -18,25 +25,14 @@ COPY cmd cmd
 COPY internal internal
 RUN go build -v -ldflags '-w -s' ./cmd/runner
 
-# Build jail
-FROM python:3.12-slim AS jail
-RUN pip install --no-cache-dir numpy && \
-  mkdir /submission && \
-  touch /submission/main.py
-COPY wrapper.py /
-
-# Build image
-FROM busybox:1.36.1-glibc AS image
+# Final Image
+FROM busybox:1.36.1-glibc
 RUN mkdir -p /app/cgroup/unified /tmp/submission
 COPY --link --from=nsjail /usr/lib/*-linux-gnu/libprotobuf.so.32 /usr/lib/*-linux-gnu/libnl-route-3.so.200 \
   /lib/*-linux-gnu/libnl-3.so.200 /lib/*-linux-gnu/libz.so.1 /usr/lib/*-linux-gnu/libstdc++.so.6 \
   /lib/*-linux-gnu/libgcc_s.so.1 /lib/
 COPY --link --from=run /usr/lib/*-linux-gnu/libseccomp.so.2 /usr/lib/*-linux-gnu/libgmp.so.10 /lib/
-COPY --link --from=nsjail /src/nsjail /app/nsjail
 COPY --link --from=run /src/runner /app/runner
-
-# Final image
-FROM scratch
-COPY --from=image / /
+COPY --link --from=nsjail /src/nsjail /app/nsjail
 COPY --from=jail / /srv
 CMD ["/app/runner"]
