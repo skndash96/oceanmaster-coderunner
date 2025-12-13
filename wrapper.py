@@ -1,16 +1,17 @@
 import inspect
 import json
 import sys
+from dataclasses import asdict
 
 import submission
 
 
 def load_user_algo():
-    for name, obj in inspect.getmembers(submission):
+    for _, obj in inspect.getmembers(submission):
         if (
             inspect.isclass(obj)
-            and issubclass(obj, submission.Game)
-            and obj is not submission.Game
+            and issubclass(obj, submission.OurPythonLib)
+            and obj is not submission.OurPythonLib
         ):
             return obj()
     raise Exception("No subclass of Game found in user.py")
@@ -22,11 +23,14 @@ def run_game():
     for line in sys.stdin:
         if line is None:
             break
-        algo.actions = []
+        algo._clear_actions()
         line = line.rstrip("\n")
-        algo.state = json.loads(line)
+        data = json.loads(line)
+        algo._set_state(submission.GameState(**data))
         algo.on_tick()
-        print(json.dumps(algo.actions), flush=True)
+
+        out = [asdict(a) for a in algo._get_actions()]
+        print(json.dumps(out), flush=True)
 
 
 if __name__ == "__main__":

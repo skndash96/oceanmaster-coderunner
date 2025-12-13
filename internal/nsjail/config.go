@@ -17,7 +17,7 @@ func WriteConfig(c *config.Config, cg cgroup.Cgroup) (*proto_nsjail.NsJailConfig
 	msg := &proto_nsjail.NsJailConfig{}
 
 	msg.Mode = proto_nsjail.Mode_ONCE.Enum()
-	msg.TimeLimit = proto.Uint32(c.Jail.TimeLimit)
+	msg.TimeLimit = proto.Uint32(c.Jail.WallTimeLimit)
 	msg.RlimitAsType = proto_nsjail.RLimit_HARD.Enum()
 	msg.RlimitCpuType = proto_nsjail.RLimit_HARD.Enum()
 	msg.RlimitFsizeType = proto_nsjail.RLimit_HARD.Enum()

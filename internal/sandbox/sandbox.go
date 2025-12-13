@@ -11,7 +11,6 @@ import (
 )
 
 type Sandbox struct {
-	ctx    context.Context
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
@@ -45,7 +44,6 @@ func NewSandbox(ctx context.Context, nsjailPath, nsjailCfgPath, submissionDir, j
 	}
 
 	s := &Sandbox{
-		ctx:    ctx,
 		cmd:    cmd,
 		stdin:  stdin,
 		stdout: stdout,
@@ -65,12 +63,6 @@ func (s *Sandbox) Send(inp any) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	select {
-	case <-s.ctx.Done():
-		return fmt.Errorf("sandbox context canceled before send")
-	default:
-	}
-
 	b, err := json.Marshal(inp)
 	if err != nil {
 		return err
@@ -81,24 +73,25 @@ func (s *Sandbox) Send(inp any) error {
 	return err
 }
 
-func (s *Sandbox) RecvOutput(v any) error {
-	line, err := readLine(s.ctx, s.outR)
+func (s *Sandbox) RecvOutput(turnCtx context.Context, v any) error {
+	line, err := readLine(turnCtx, s.outR)
 	if err != nil {
 		return err
 	}
+	// TODO: if json unmarshal fails, retry until turnCtx is done
+	// allow user to print debug logs in non-JSON format
 	return json.Unmarshal(line, v)
 }
 
-func (s *Sandbox) RecvError() ([]byte, error) {
-	return readLine(s.ctx, s.errR)
+func (s *Sandbox) RecvError(ctx context.Context) ([]byte, error) {
+	return readLine(ctx, s.errR)
 }
 
 func (s *Sandbox) Destroy() error {
 	if s.cmd.Process != nil {
 		_ = s.cmd.Process.Kill()
+		_ = s.cmd.Wait()
 	}
-
-	_, _ = s.cmd.Process.Wait()
 
 	_ = s.stdin.Close()
 	_ = s.stdout.Close()

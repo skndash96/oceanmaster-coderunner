@@ -8,8 +8,8 @@ import (
 type JailConfig struct {
 	Hostname          string
 	Cwd               string
-	TimeLimit         uint32
-	TurnTimeout       time.Duration
+	WallTimeLimit     uint32
+	TickTimeLimit     time.Duration
 	CGroupPidsMax     uint64
 	CGroupMemMax      uint64
 	CGroupCpuMsPerSec uint32
@@ -40,12 +40,12 @@ func New() *Config {
 		Jail: &JailConfig{
 			Hostname:          "jail",
 			Cwd:               "/",
-			TimeLimit:         5 * 60 * 1000,     // 5 minutes
-			TurnTimeout:       time.Duration(10 * time.Second),         // 10 seconds
-			CGroupPidsMax:     10,                // 10 processes
-			CGroupMemMax:      100 * 1024 * 1024, // 100 MB
-			CGroupCpuMsPerSec: 200,               // 20% CPU
-			TmpfsSize:         100 * 1024 * 1024, // 100 MB
+			WallTimeLimit:     2 * 60 * 1000,                         // 2 minutes
+			TickTimeLimit:     time.Duration(500 * time.Millisecond), // 500 ms
+			CGroupPidsMax:     10,                                    // 10 processes
+			CGroupMemMax:      100 * 1024 * 1024,                     // 100 MB
+			CGroupCpuMsPerSec: 200,                                   // 20% CPU
+			TmpfsSize:         100 * 1024 * 1024,                     // 100 MB
 		},
 	}
 }

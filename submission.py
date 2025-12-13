@@ -1,23 +1,59 @@
-# this Game class will be provided by our library
-class Game:
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class GameState:
+    tick: int = 0
+    series: list[int] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class Action:
+    element: int = 0
+
+
+class OurPythonLib:
     def __init__(self):
-        self.state = []
-        self.actions = []
+        self._state = GameState()
+        self._actions: list[Action] = []
+
+    @property
+    def state(self) -> GameState:
+        return self._state
+
+    def _set_state(self, state: GameState):
+        self._state = state
+
+    def _get_actions(self) -> list[Action]:
+        return self._actions
+
+    def _clear_actions(self):
+        self._actions = []
+
+    def add_element(self, int: int):
+        self._actions.append(Action(int))
 
     def on_tick(self):
-        raise NotImplementedError("User algorithm must implement on_tick()")
+        """
+        Must return a list of Action objects.
+        """
+        raise NotImplementedError
 
 
-# user gives Extension of Game
-class Fibonacci(Game):
+###### Above is python lib
+###### Below is user implementation
+
+
+class UserImplementation(OurPythonLib):
     def __init__(self):
         super().__init__()
 
     def on_tick(self):
-        state = self.state
-        if len(state) == 0:
-            self.actions.append(0)
-        elif len(state) == 1:
-            self.actions.append(1)
+        s = self.state.series
+
+        if len(s) == 0:
+            self.add_element(0)
+        elif len(s) == 1:
+            self.add_element(1)
         else:
-            self.actions.append(state[-1] + state[-2])
+            self.add_element(s[-1] + s[-2])

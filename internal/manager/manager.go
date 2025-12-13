@@ -10,18 +10,19 @@ import (
 	"sync"
 
 	"github.com/delta/code-runner/internal/config"
+	"github.com/delta/code-runner/internal/engine"
 )
 
 type GameManager struct {
 	cfg     *config.Config
-	matches map[string]*match
+	matches map[string]*engine.Match
 	mu      sync.Mutex
 }
 
 func NewGameManager(cfg *config.Config) *GameManager {
 	return &GameManager{
 		cfg:     cfg,
-		matches: make(map[string]*match),
+		matches: make(map[string]*engine.Match),
 		mu:      sync.Mutex{},
 	}
 }
@@ -44,13 +45,7 @@ func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
 		return fmt.Errorf("save p2 code: %w", err)
 	}
 
-	m := &match{
-		ID:    ID,
-		p1:    p1,
-		p2:    p2,
-		p1Dir: p1Dir,
-		p2Dir: p2Dir,
-	}
+	m := engine.NewMatch(ID, p1, p2, p1Dir, p2Dir)
 
 	gm.mu.Lock()
 	gm.matches[ID] = m
@@ -62,8 +57,8 @@ func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
 	delete(gm.matches, ID)
 	gm.mu.Unlock()
 
-	_ = os.RemoveAll(m.p1Dir)
-	_ = os.RemoveAll(m.p2Dir)
+	_ = os.RemoveAll(m.Player1Dir)
+	_ = os.RemoveAll(m.Player2Dir)
 
 	return err
 }
