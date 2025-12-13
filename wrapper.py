@@ -1,7 +1,6 @@
 import inspect
 import json
 import sys
-from dataclasses import asdict
 
 import submission
 
@@ -23,14 +22,20 @@ def run_game():
     for line in sys.stdin:
         if line is None:
             break
+
         algo._clear_actions()
-        line = line.rstrip("\n")
-        data = json.loads(line)
-        algo._set_state(submission.GameState(**data))
+
+        raw_json = json.loads(line.rstrip("\n"))
+
+        new_game_state = submission.GameState.from_json(raw_json)
+
+        algo._set_state(new_game_state)
+
         algo.on_tick()
 
-        out = [asdict(a) for a in algo._get_actions()]
-        print(json.dumps(out), flush=True)
+        raw_actions = [a.to_json() for a in algo._get_actions()]
+
+        print(json.dumps(raw_actions), flush=True)
 
 
 if __name__ == "__main__":

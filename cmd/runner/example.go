@@ -9,10 +9,19 @@ class GameState:
     tick: int = 0
     series: list[int] = field(default_factory=list)
 
+    @staticmethod
+    def from_json(json_data: dict):
+        return GameState(
+            tick=int(json_data.get("tick", 0)), series=json_data.get("series", [])
+        )
+
 
 @dataclass(frozen=True)
 class Action:
     element: int = 0
+
+    def to_json(self):
+        return {"element": self.element}
 
 
 class OurPythonLib:
@@ -31,10 +40,10 @@ class OurPythonLib:
         return self._actions
 
     def _clear_actions(self):
-        self._actions = []
+        self._actions.clear()
 
-    def add_element(self, int: int):
-        self._actions.append(Action(int))
+    def add_element(self, v: int):
+        self._actions.append(Action(v))
 
     def on_tick(self):
         """

@@ -16,6 +16,7 @@ func NewGameState() GameState {
 	}
 }
 
+// gs passed by value
 func UpdateGameState(gs GameState, a []Action) (GameState, bool, bool) {
 	gs.Tick++
 
@@ -23,7 +24,8 @@ func UpdateGameState(gs GameState, a []Action) (GameState, bool, bool) {
 		gs.Series = append(gs.Series, action.Element)
 	}
 
-	hasEned := gs.Tick >= 30
+	isValid := true
+	hasEnded := gs.Tick >= 30
 
-	return gs, true, hasEned
+	return gs, isValid, hasEnded
 }
