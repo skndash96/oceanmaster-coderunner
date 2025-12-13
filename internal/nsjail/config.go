@@ -17,15 +17,15 @@ func WriteConfig(c *config.Config, cg cgroup.Cgroup) (*proto_nsjail.NsJailConfig
 	msg := &proto_nsjail.NsJailConfig{}
 
 	msg.Mode = proto_nsjail.Mode_ONCE.Enum()
-	msg.TimeLimit = proto.Uint32(c.Jail.WallTimeLimit)
+	msg.TimeLimit = proto.Uint32(c.JailWallTimeLimit)
 	msg.RlimitAsType = proto_nsjail.RLimit_HARD.Enum()
 	msg.RlimitCpuType = proto_nsjail.RLimit_HARD.Enum()
 	msg.RlimitFsizeType = proto_nsjail.RLimit_HARD.Enum()
 	msg.RlimitNofileType = proto_nsjail.RLimit_HARD.Enum()
 
-	msg.CgroupPidsMax = proto.Uint64(c.Jail.CGroupPidsMax)
-	msg.CgroupMemMax = proto.Uint64(c.Jail.CGroupMemMax)
-	msg.CgroupCpuMsPerSec = proto.Uint32(c.Jail.CGroupCpuMsPerSec)
+	msg.CgroupPidsMax = proto.Uint64(c.JailCGroupPidsMax)
+	msg.CgroupMemMax = proto.Uint64(c.JailCGroupMemMax)
+	msg.CgroupCpuMsPerSec = proto.Uint32(c.JailCGroupCpuMsPerSec)
 
 	// Set the respective v1 or v2 cgroup configuration
 	cg.SetConfig(msg)
@@ -40,8 +40,8 @@ func WriteConfig(c *config.Config, cg cgroup.Cgroup) (*proto_nsjail.NsJailConfig
 		msg.LogLevel = proto_nsjail.LogLevel_DEBUG.Enum()
 	}
 
-	msg.Hostname = proto.String(c.Jail.Hostname)
-	msg.Cwd = proto.String(c.Jail.Cwd)
+	msg.Hostname = proto.String(c.JailHostname)
+	msg.Cwd = proto.String(c.JailCwd)
 
 	msg.ExecBin = &proto_nsjail.Exe{
 		Path: proto.String("/usr/local/bin/python3"),
@@ -58,7 +58,7 @@ func WriteConfig(c *config.Config, cg cgroup.Cgroup) (*proto_nsjail.NsJailConfig
 		Dst:     proto.String("/tmp"),
 		Fstype:  proto.String("tmpfs"),
 		Rw:      proto.Bool(true),
-		Options: proto.String(fmt.Sprintf("size=%d", c.Jail.TmpfsSize)),
+		Options: proto.String(fmt.Sprintf("size=%d", c.JailTmpfsSize)),
 		Nodev:   proto.Bool(true),
 		Nosuid:  proto.Bool(true),
 	},

@@ -29,8 +29,8 @@ func NewMatch(id, p1, p2, p1Dir, p2Dir string) *Match {
 }
 
 func (m *Match) Start(cfg *config.Config) error {
-	matchCtx, cancelMatch := context.WithCancel(context.Background())
-	defer cancelMatch()
+	matchCtx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
 
 	s1, err := sandbox.NewSandbox(matchCtx, cfg.NsjailPath, cfg.NsjailCfgPath, m.Player1Dir, cfg.JailSubmissionPath)
 	if err != nil {
@@ -60,8 +60,7 @@ func (m *Match) Start(cfg *config.Config) error {
 	)
 
 	for {
-		fmt.Println("State", gameState)
-		turnCtx, cancelTurn := context.WithTimeout(matchCtx, time.Duration(cfg.Jail.TickTimeLimit))
+		turnCtx, cancelTurn := context.WithTimeout(matchCtx, time.Duration(cfg.JailTickTimeLimit))
 		actions := []Action{}
 		var turnErr error
 
@@ -83,9 +82,7 @@ func (m *Match) Start(cfg *config.Config) error {
 			}
 		}
 
-		fmt.Println("Acitons", actions)
-
-		// pass by value
+		// argpass by value
 		newState, ok, hasEnded := UpdateGameState(gameState, actions)
 		if ok {
 			gameState = newState
@@ -98,7 +95,6 @@ func (m *Match) Start(cfg *config.Config) error {
 		}
 	}
 
-	fmt.Println("Match complete.")
 	return nil
 }
 

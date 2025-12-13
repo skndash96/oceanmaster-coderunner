@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"sync"
 )
 
 type Sandbox struct {
@@ -18,8 +17,6 @@ type Sandbox struct {
 
 	outR *bufio.Reader
 	errR *bufio.Reader
-
-	mu sync.Mutex
 }
 
 func NewSandbox(ctx context.Context, nsjailPath, nsjailCfgPath, submissionDir, jailSubmissionDir string) (*Sandbox, error) {
@@ -60,9 +57,6 @@ func (s *Sandbox) Start() error {
 }
 
 func (s *Sandbox) Send(inp any) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	b, err := json.Marshal(inp)
 	if err != nil {
 		return err
@@ -70,16 +64,16 @@ func (s *Sandbox) Send(inp any) error {
 	b = append(b, '\n')
 
 	_, err = s.stdin.Write(b)
+
 	return err
 }
 
-func (s *Sandbox) RecvOutput(turnCtx context.Context, v any) error {
-	line, err := readLine(turnCtx, s.outR)
+func (s *Sandbox) RecvOutput(ctx context.Context, v any) error {
+	line, err := readLine(ctx, s.outR)
 	if err != nil {
 		return err
 	}
-	// TODO: if json unmarshal fails, retry until turnCtx is done
-	// allow user to print debug logs in non-JSON format
+	// TODO: if json unmarshal fails, log the incoming line and try again
 	return json.Unmarshal(line, v)
 }
 
