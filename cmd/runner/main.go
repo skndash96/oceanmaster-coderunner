@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/delta/code-runner/internal/cgroup"
 	"github.com/delta/code-runner/internal/config"
@@ -28,11 +29,29 @@ func run() error {
 	// TODO: Create RabbitMQ Consumer (max 20 or so concurrency)
 	// TODO: Pass incoming matches to game manager
 	// Make sure new match is called in a goroutine
-	err = manager.NewMatch("12", "player1", "player2", egCode, egCode)
 
-	if err != nil {
-		return fmt.Errorf("Failed to simulate match %v", err)
+	var wg sync.WaitGroup
+	wg.Add(5)
+
+	for i := range 5 {
+		go func() {
+			defer wg.Done()
+
+			if err := manager.NewMatch(
+				fmt.Sprintf("%d", 2*i),
+				fmt.Sprintf("player%d", 2*i),
+				fmt.Sprintf("player%d", 2*i+1),
+				egCode,
+				egCode,
+			); err != nil {
+				fmt.Printf("Failed to simulate match %d: %v\n", 2*i, err)
+			} else {
+				fmt.Printf("Match %d simulated successfully\n", 2*i)
+			}
+		}()
 	}
+
+	wg.Wait()
 
 	return nil
 }

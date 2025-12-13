@@ -16,36 +16,40 @@ type Match struct {
 	Player2    string
 	Player1Dir string
 	Player2Dir string
+	gl         *GameLogger
 }
 
-func NewMatch(id, p1, p2, p1Dir, p2Dir string) *Match {
+func NewMatch(id, p1, p2, p1Dir, p2Dir string, gl *GameLogger) *Match {
 	return &Match{
 		ID:         id,
 		Player1:    p1,
 		Player2:    p2,
 		Player1Dir: p1Dir,
 		Player2Dir: p2Dir,
+		gl:         gl,
 	}
 }
 
 func (m *Match) Start(cfg *config.Config) error {
+	m.gl.Log(GameLogDebug, "Starting match")
+
 	matchCtx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
 
 	s1, err := sandbox.NewSandbox(matchCtx, cfg.NsjailPath, cfg.NsjailCfgPath, m.Player1Dir, cfg.JailSubmissionPath)
 	if err != nil {
-		return fmt.Errorf("s1 failed to start: %w", err)
+		return fmt.Errorf("p1 failed to start: %w", err)
 	}
 	defer s1.Destroy()
 
 	s2, err := sandbox.NewSandbox(matchCtx, cfg.NsjailPath, cfg.NsjailCfgPath, m.Player2Dir, cfg.JailSubmissionPath)
 	if err != nil {
-		return fmt.Errorf("s2 failed to start: %w", err)
+		return fmt.Errorf("p2 failed to start: %w", err)
 	}
 	defer s2.Destroy()
 
-	go streamErrors(matchCtx, "p1", s1)
-	go streamErrors(matchCtx, "p2", s2)
+	go streamErrors(matchCtx, s1, m.gl, "p1")
+	go streamErrors(matchCtx, s2, m.gl, "p2")
 
 	if err := s1.Start(); err != nil {
 		return fmt.Errorf("p1 failed to start: %w", err)
@@ -54,20 +58,28 @@ func (m *Match) Start(cfg *config.Config) error {
 		return fmt.Errorf("p2 failed to start: %w", err)
 	}
 
+	m.gl.Log(GameLogDebug, "Algorithms started")
+
 	var (
 		gameState GameState = NewGameState()
 		isP1Turn            = true
 	)
 
+	m.gl.Log(GameLogGameState, gameState)
+
 	for {
-		turnCtx, cancelTurn := context.WithTimeout(matchCtx, time.Duration(cfg.JailTickTimeLimit))
+		turnCtx, cancelTurn := context.WithTimeout(matchCtx, 6*time.Second)
+
 		actions := []Action{}
 		var turnErr error
 
+		trStart := time.Now()
 		if isP1Turn {
-			turnErr = doTurn(turnCtx, s1, &gameState, &actions)
+			turnErr = doTurn(turnCtx, s1, m.gl, "p1", &gameState, &actions)
+			m.gl.Log(GameLogDebug, fmt.Sprintf("Completed Turn (elapsed %s)", time.Since(trStart)))
 		} else {
-			turnErr = doTurn(turnCtx, s2, &gameState, &actions)
+			turnErr = doTurn(turnCtx, s2, m.gl, "p2", &gameState, &actions)
+			m.gl.Log(GameLogDebug, fmt.Sprintf("Completed Turn (elapsed %s)", time.Since(trStart)))
 		}
 
 		cancelTurn()
@@ -81,6 +93,8 @@ func (m *Match) Start(cfg *config.Config) error {
 				return fmt.Errorf("p2 algo turn failed: %w", turnErr)
 			}
 		}
+
+		m.gl.Log(GameLogGameAction, actions)
 
 		// argpass by value
 		newState, ok, hasEnded := UpdateGameState(gameState, actions)
@@ -98,10 +112,14 @@ func (m *Match) Start(cfg *config.Config) error {
 	return nil
 }
 
-func doTurn(turnCtx context.Context, s *sandbox.Sandbox, state *GameState, out *[]Action) error {
+func doTurn(turnCtx context.Context, s *sandbox.Sandbox, gl *GameLogger, label string, state *GameState, out *[]Action) error {
+	gl.Log(GameLogDebug, label, "Sending state")
+
 	if err := s.Send(state); err != nil {
 		return fmt.Errorf("send error: %w", err)
 	}
+
+	gl.Log(GameLogDebug, label, "Waiting for output")
 
 	if err := s.RecvOutput(turnCtx, out); err != nil {
 		return fmt.Errorf("receive error: %w", err)
@@ -110,14 +128,14 @@ func doTurn(turnCtx context.Context, s *sandbox.Sandbox, state *GameState, out *
 	return nil
 }
 
-func streamErrors(ctx context.Context, label string, s *sandbox.Sandbox) {
+func streamErrors(ctx context.Context, s *sandbox.Sandbox, gl *GameLogger, label string) {
 	for {
 		data, err := s.RecvError(ctx)
 		if err != nil {
 			return
 		}
 		if strings.TrimSpace(string(data)) != "" {
-			fmt.Printf("[ERROR] %s: %s\n", label, string(data))
+			gl.Log(GameLogError, label, string(data))
 		}
 	}
 }
