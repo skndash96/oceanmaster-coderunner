@@ -15,9 +15,9 @@ type GameLogger struct {
 }
 
 type GameLog struct {
-	Typ     GameLogType `json:"typ"`
-	Msg     any         `json:"msg"`
-	Elapsed string      `json:"elapsed,omitempty"`
+	Typ GameLogType `json:"typ"`
+	Msg any         `json:"msg"`
+	Tim string      `json:"tim,omitempty"`
 }
 
 type GameLogType string
@@ -41,8 +41,8 @@ func (gl *GameLogger) Log(typ GameLogType, msg ...any) {
 	defer gl.mu.Unlock()
 
 	_ = gl.enc.Encode(GameLog{
-		Typ:     typ,
-		Msg:     msg,
-		Elapsed: fmt.Sprint(time.Since(gl.tStart)),
+		Typ: typ,
+		Msg: msg,
+		Tim: fmt.Sprint(time.Since(gl.tStart)),
 	})
 }

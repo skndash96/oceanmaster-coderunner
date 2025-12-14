@@ -15,7 +15,5 @@ func UploadFile(matchID string, path string) error {
 	// for now, just log the file content
 	// io.Copy(os.Stdout, f)
 
-	fmt.Printf("Match %s Completed", matchID)
-
 	return nil
 }

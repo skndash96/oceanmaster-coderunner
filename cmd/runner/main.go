@@ -31,7 +31,7 @@ func run() error {
 	// Make sure new match is called in a goroutine
 
 	var (
-		mCnt int = 5
+		mCnt int = 50
 		wg   sync.WaitGroup
 	)
 

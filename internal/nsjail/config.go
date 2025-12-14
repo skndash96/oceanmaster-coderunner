@@ -44,8 +44,11 @@ func WriteConfig(c *config.Config, cg cgroup.Cgroup) (*proto_nsjail.NsJailConfig
 	msg.Cwd = proto.String(c.JailCwd)
 
 	msg.ExecBin = &proto_nsjail.Exe{
-		Path: proto.String("/usr/local/bin/python3"),
-		Arg:  []string{"wrapper.py"},
+		Path: proto.String("/bin/sh"),
+		Arg: []string{
+			"-c",
+			"echo testerr >&2 && exec /usr/local/bin/python3 wrapper.py",
+		},
 	}
 
 	msg.Mount = []*proto_nsjail.MountPt{{

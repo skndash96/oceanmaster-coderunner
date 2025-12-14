@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/delta/code-runner/internal/config"
 	"github.com/delta/code-runner/internal/engine"
@@ -50,7 +51,7 @@ func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
 
 	gl := engine.NewGameLogger(logF)
 
-	gl.Log(engine.GameLogDebug, fmt.Sprintf("Match ID %s", ID))
+	gl.Log(engine.GameLogDebug, fmt.Sprintf("Match ID %s at %s", ID, time.Now().Format(time.RFC3339)))
 
 	if err := savePlayerCode(p1Code, path.Join(p1Dir, "submission.py")); err != nil {
 		err = fmt.Errorf("save p1 code: %w", err)
@@ -92,6 +93,8 @@ func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
 		gl.Log(engine.GameLogError, err.Error())
 		return err
 	}
+
+	fmt.Printf("Match %s Completed\n", m.ID)
 
 	return nil
 }
