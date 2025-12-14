@@ -93,14 +93,6 @@ Because the sandbox protocol is simply line-oriented JSON for state in and actio
   - Wall, handshake, and per-tick timeouts.
 - nsjail.cfg is generated at startup from this central config, ensuring reproducible sandbox settings across matches.
 
-## Usage Outline
-- Start the service; it initializes config, writes nsjail.cfg, and prepares isolation.
-- Connect to RabbitMQ and begin consuming messages.
-- On each message, spawn a goroutine, let the Game Manager set up per-match temp folders, and then call the engine to simulate.
-- Monitor logs and metrics; adjust concurrency limits and timeouts as needed for your workload.
-
-By following this workflow, the system remains easy to scale and reason about: goroutines encapsulate match lifecycles, centralized configuration controls sandbox behavior, and the engine/game layer determines how the game is played and when it ends.
-
 ---
 
 ## Usage
