@@ -73,8 +73,13 @@ func (s *Sandbox) RecvOutput(ctx context.Context, v any) error {
 	if err != nil {
 		return err
 	}
-	// TODO: if json unmarshal fails, log the incoming line and try again
-	return json.Unmarshal(line, v)
+
+	err = json.Unmarshal(line, v)
+	if err != nil {
+		return fmt.Errorf("unmarshal output: %v got %s", err, string(line))
+	}
+
+	return nil
 }
 
 func (s *Sandbox) RecvError(ctx context.Context) ([]byte, error) {

@@ -8,7 +8,6 @@ import (
 	"path"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/delta/code-runner/internal/config"
 	"github.com/delta/code-runner/internal/engine"
@@ -29,8 +28,6 @@ func NewGameManager(cfg *config.Config) *GameManager {
 }
 
 func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
-	tStart := time.Now()
-
 	p1Dir := path.Join(gm.cfg.HostSubmissionPath, ID, "p1")
 	p2Dir := path.Join(gm.cfg.HostSubmissionPath, ID, "p2")
 	logFile := path.Join(gm.cfg.HostSubmissionPath, ID, "log.txt")
@@ -51,15 +48,21 @@ func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
 	}
 	defer logF.Close()
 
+	gl := engine.NewGameLogger(logF)
+
+	gl.Log(engine.GameLogDebug, fmt.Sprintf("Match ID %s", ID))
+
 	if err := savePlayerCode(p1Code, path.Join(p1Dir, "submission.py")); err != nil {
-		return fmt.Errorf("save p1 code: %w", err)
+		err = fmt.Errorf("save p1 code: %w", err)
+		gl.Log(engine.GameLogError, err.Error())
+		return err
 	}
 
 	if err := savePlayerCode(p2Code, path.Join(p2Dir, "submission.py")); err != nil {
-		return fmt.Errorf("save p2 code: %w", err)
+		err = fmt.Errorf("save p2 code: %w", err)
+		gl.Log(engine.GameLogError, err.Error())
+		return err
 	}
-
-	gl := engine.NewGameLogger(logF)
 
 	m := engine.NewMatch(ID, p1, p2, p1Dir, p2Dir, gl)
 
@@ -73,22 +76,21 @@ func (gm *GameManager) NewMatch(ID, p1, p2, p1Code, p2Code string) error {
 		gm.mu.Unlock()
 	}()
 
-	gl.Log(engine.GameLogDebug, fmt.Sprintf("New match %s (at %s)", ID, tStart.Format(time.RFC3339)))
+	gl.Log(engine.GameLogDebug, "Completed Setup")
 
-	gl.Log(engine.GameLogDebug, fmt.Sprintf("Completed Setup (elapsed %s)", time.Since(tStart)))
-	tStart = time.Now()
-
-	err = m.Start(gm.cfg)
+	err = m.Simulate(gm.cfg)
 	if err != nil {
-		gl.Log(engine.GameLogError, fmt.Sprintf("Match %s failed: %v", ID, err))
+		err = fmt.Errorf("simulate: %w", err)
+		gl.Log(engine.GameLogError, err.Error())
 		return err
 	}
 
-	gl.Log(engine.GameLogDebug, fmt.Sprintf("Completed Match (elapsed %s)", time.Since(tStart)))
+	gl.Log(engine.GameLogDebug, "Completed Simulation")
 
-	// game logs is stored in logFile
-	if err := UploadFile(logFile); err != nil {
-		return fmt.Errorf("upload log file: %w", err)
+	if err := UploadFile(m.ID, logFile); err != nil {
+		err = fmt.Errorf("upload log file: %w", err)
+		gl.Log(engine.GameLogError, err.Error())
+		return err
 	}
 
 	return nil

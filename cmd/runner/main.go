@@ -30,10 +30,14 @@ func run() error {
 	// TODO: Pass incoming matches to game manager
 	// Make sure new match is called in a goroutine
 
-	var wg sync.WaitGroup
-	wg.Add(5)
+	var (
+		mCnt int = 5
+		wg   sync.WaitGroup
+	)
 
-	for i := range 5 {
+	wg.Add(mCnt)
+
+	for i := range mCnt {
 		go func() {
 			defer wg.Done()
 
@@ -45,8 +49,6 @@ func run() error {
 				egCode,
 			); err != nil {
 				fmt.Printf("Failed to simulate match %d: %v\n", 2*i, err)
-			} else {
-				fmt.Printf("Match %d simulated successfully\n", 2*i)
 			}
 		}()
 	}

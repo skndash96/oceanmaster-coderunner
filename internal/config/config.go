@@ -19,31 +19,39 @@ type Config struct {
 	JailHostname          string
 	JailCwd               string
 	JailSubmissionPath    string
-	JailWallTimeLimit     uint32
-	JailTickTimeLimitMS   int64
 	JailCGroupPidsMax     uint64
 	JailCGroupMemMax      uint64
 	JailCGroupCpuMsPerSec uint32
 	JailTmpfsSize         uint64
+
+	JailWallTimeoutMS      uint32
+	JailHandshakeTimeoutMS uint32
+	JailTickTimeoutMS      uint32
 }
 
 func New() *Config {
 	isProd := os.Getenv("PROD") == "true"
 
 	return &Config{
-		NsjailPath:            "/app/nsjail",
-		NsjailCfgPath:         "/app/nsjail.cfg",
-		WrapperPyPath:         "/wrapper.py",
-		HostSubmissionPath:    "/tmp/submission",
+		IsProd: isProd,
+
+		NsjailPath:    "/app/nsjail",
+		NsjailCfgPath: "/app/nsjail.cfg",
+
+		WrapperPyPath:      "/wrapper.py",
+		HostSubmissionPath: "/tmp/submission",
+
 		JailSubmissionPath:    "/submission",
-		IsProd:                isProd,
 		JailHostname:          "jail",
 		JailCwd:               "/",
-		JailWallTimeLimit:     2 * 60 * 1000,     // 2 minutes
-		JailTickTimeLimitMS:   2000,              // 2 seconds
 		JailCGroupPidsMax:     20,                // 20 processes
 		JailCGroupMemMax:      100 * 1024 * 1024, // 100 MB
 		JailCGroupCpuMsPerSec: 200,               // 20% CPU
 		JailTmpfsSize:         100 * 1024 * 1024, // 100 MB
+
+		// Wall >= Setup + 1000 * Tick
+		JailWallTimeoutMS:      2 * 60 * 1000, // 2 minutes
+		JailHandshakeTimeoutMS: 10 * 1000,     // 10 seconds
+		JailTickTimeoutMS:      500,           // 500 milliseconds
 	}
 }

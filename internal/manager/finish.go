@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func UploadFile(path string) error {
+func UploadFile(matchID string, path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
@@ -14,6 +14,8 @@ func UploadFile(path string) error {
 
 	// for now, just log the file content
 	// io.Copy(os.Stdout, f)
+
+	fmt.Printf("Match %s Completed", matchID)
 
 	return nil
 }

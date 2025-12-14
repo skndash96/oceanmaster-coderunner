@@ -19,6 +19,8 @@ def load_user_algo():
 def run_game():
     algo = load_user_algo()
 
+    print(json.dumps("__READY__"), flush=True)
+
     for line in sys.stdin:
         if line is None:
             break
