@@ -42,7 +42,7 @@ func New() *Config {
 		NsjailCfgPath: "/app/nsjail.cfg",
 
 		WrapperPyPath:      "/wrapper.py",
-		HostSubmissionPath: "/tmp/submission",
+		HostSubmissionPath: "/submissions",
 
 		JailSubmissionPath:    "/submission",
 		JailHostname:          "jail",

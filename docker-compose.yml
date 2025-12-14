@@ -8,4 +8,4 @@ services:
       - PROD=true
     privileged: true
     volumes:
-      - ./.logs:/tmp/submission
+      - ./.submissions:/submissions

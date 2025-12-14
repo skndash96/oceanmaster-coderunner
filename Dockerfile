@@ -27,7 +27,7 @@ RUN go build -v -ldflags '-w -s' ./cmd/runner
 
 # Final Image
 FROM busybox:1.36.1-glibc
-RUN mkdir -p /app/cgroup/unified /tmp/submission
+RUN mkdir -p /app/cgroup/unified /submissions
 COPY --link --from=nsjail /usr/lib/*-linux-gnu/libprotobuf.so.32 /usr/lib/*-linux-gnu/libnl-route-3.so.200 \
     /lib/*-linux-gnu/libnl-3.so.200 /lib/*-linux-gnu/libz.so.1 /usr/lib/*-linux-gnu/libstdc++.so.6 \
     /lib/*-linux-gnu/libgcc_s.so.1 /lib/
