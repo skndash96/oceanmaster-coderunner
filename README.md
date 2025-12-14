@@ -93,7 +93,6 @@ Because the sandbox protocol is simply line-oriented JSON for state in and actio
   - Wall, handshake, and per-tick timeouts.
 - nsjail.cfg is generated at startup from this central config, ensuring reproducible sandbox settings across matches.
 
----
 
 ## Usage
 
@@ -118,4 +117,3 @@ Notes:
 - Logs: Each match writes a JSON log file under `HostSubmissionPath/<matchID>/log.txt`. Structured logs include `DEBUG`, `STATE`, `ACTION`, and `ERROR`.
 - Cleanup: Per-player directories are removed after the match completes.
 
----
