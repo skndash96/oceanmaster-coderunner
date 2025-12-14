@@ -43,6 +43,8 @@ func WriteConfig(c *config.Config, cg cgroup.Cgroup) (*proto_nsjail.NsJailConfig
 	msg.Hostname = proto.String(c.JailHostname)
 	msg.Cwd = proto.String(c.JailCwd)
 
+	// TODO: Remove testerr
+	// testerr allows logs to indicate time of nsjail setup complete and differentiate python cold-starts
 	msg.ExecBin = &proto_nsjail.Exe{
 		Path: proto.String("/bin/sh"),
 		Arg: []string{

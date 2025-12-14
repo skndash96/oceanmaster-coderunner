@@ -2,13 +2,15 @@ package config
 
 import (
 	"os"
+	"strconv"
 )
 
 type JailConfig struct {
 }
 
 type Config struct {
-	IsProd bool
+	IsProd               bool
+	MaxConcurrentMatches int
 
 	NsjailPath    string
 	NsjailCfgPath string
@@ -33,7 +35,8 @@ func New() *Config {
 	isProd := os.Getenv("PROD") == "true"
 
 	return &Config{
-		IsProd: isProd,
+		IsProd:               isProd,
+		MaxConcurrentMatches: getEnv("MAX_CONCURRENT_MATCHES", 10),
 
 		NsjailPath:    "/app/nsjail",
 		NsjailCfgPath: "/app/nsjail.cfg",
@@ -54,4 +57,28 @@ func New() *Config {
 		JailHandshakeTimeoutMS: 10 * 1000,     // 10 seconds
 		JailTickTimeoutMS:      500,           // 500 milliseconds
 	}
+}
+
+func getEnv[T string | int](k string, d T) T {
+	v := os.Getenv(k)
+	if v == "" {
+		return d
+	}
+
+	var result T
+
+	switch any(d).(type) {
+	case string:
+		result = any(v).(T)
+	case int:
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			panic(err)
+		}
+		result = any(i).(T)
+	default:
+		panic("unsupported type")
+	}
+
+	return result
 }

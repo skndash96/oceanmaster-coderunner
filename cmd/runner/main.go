@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+
 	"sync"
 
 	"github.com/delta/code-runner/internal/cgroup"
@@ -31,10 +32,11 @@ func run() error {
 	// Make sure new match is called in a goroutine
 
 	var (
-		mCnt int = 50
+		mCnt int = int(cfg.MaxConcurrentMatches)
 		wg   sync.WaitGroup
 	)
 
+	// Testing: Simulate mCnt matches at once
 	wg.Add(mCnt)
 
 	for i := range mCnt {
@@ -50,6 +52,7 @@ func run() error {
 			); err != nil {
 				fmt.Printf("Failed to simulate match %d: %v\n", 2*i, err)
 			}
+
 		}()
 	}
 

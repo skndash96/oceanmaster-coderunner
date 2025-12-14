@@ -1,8 +1,11 @@
 services:
-    code-runner:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        environment:
-            - PROD=true
-        privileged: true
+  code-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - MAX_CONCURRENT_MATCHES=1
+      - PROD=true
+    privileged: true
+    volumes:
+      - ./.logs:/tmp/submission
