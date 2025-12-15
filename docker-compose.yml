@@ -4,8 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      - MAX_CONCURRENT_MATCHES=1
+      - MAX_CONCURRENT_MATCHES=10
       - PROD=true
     privileged: true
     volumes:
       - ./.submissions:/submissions
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g

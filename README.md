@@ -1,10 +1,9 @@
 # Ocean Master - Code Runner
+This repository is responsible for running matches in a sandboxed environment.
 
-This document focuses on the end-to-end workflow and concurrency model of the system, starting at `cmd/runner/main.go`, moving through request consumption, match orchestration, and the engine simulation. It intentionally avoids per-file summaries and instead tells the story of how an incoming request becomes a simulated match.
+## Workflow
 
-## Workflow Story
-
-### 1) Entry Point: main.go initializes the world
+### 1) Entry Point
 The journey begins in `cmd/runner/main.go`. At startup, the program:
 
 - Collects configuration from a centralized place (a config package) so all paths, resource limits, and timeouts are controlled in one location. This ensures that nsjail paths, jail mount points, cgroup policy, and timeouts remain consistent across the service.
@@ -16,27 +15,19 @@ This ensures a deterministic sandbox environment before any matches are started.
 After the initial setup, the service consumes match requests from a RabbitMQ queue. Each message includes enough data to start a match (match ID, player identifiers, and code references—either inline code strings or URLs).
 
 For each incoming message, the program immediately starts match handling in a new goroutine. This is critical:
-- Concurrency is achieved by launching a goroutine per request, allowing multiple matches to run in parallel without blocking the consumer loop.
-- The concurrency level is bounded by configuration (e.g., max concurrent matches); you can enforce backpressure via worker pools, semaphore channels, or queue QoS. Regardless of the mechanism, the goroutine model enables horizontal scaling within a single process.
-
-Anywhere the system reacts to new work (message consumption, engine steps, error streaming), concurrency via goroutines is considered and used to keep the pipeline non-blocking and efficient.
+- Concurrency is achieved by launching a goroutine per request, allowing multiple matches to run in parallel without blocking the consumer thread.
+- The concurrency level is bounded by configuration (e.g., max concurrent matches); It should be possible in RabbitMQ consumer to limit the maximum number of pending (un-acknowledged) requests.
 
 ### 3) Game Manager: the controller
 The main goroutine delegates the match lifecycle to a Game Manager. Conceptually, the Game Manager:
 
-- Maintains a count or registry of ongoing matches. Even if it’s not strictly required now, it exists for future needs (observability, rate-limiting, querying active matches, safe shutdown coordination, etc.). Think of it as a controller tracking state and enforcing policy around concurrency.
-- Accepts the match request and triggers match setup and execution.
-
-### 4) Per-match setup: temp folders for code and logs
-On receiving a new match request, the Game Manager prepares the file system artifacts needed for sandboxed execution:
-
-- Creates temporary per-match directories under a host submissions path.
-- Creates per-player subdirectories (for player1 and player2), each holding a `submission.py`.
-  - If player code is provided as a URL, it fetches and writes the contents.
-  - If player code is provided inline, it writes the string directly.
+- Maintains a count of ongoing matches.
+- Receives the match request:
+- Creates resources (files and dirs) for code and logs
+- Saves the player code (either inline code strings or URLs)
 - Creates a match-specific log file, which becomes the sink for structured JSON logs emitted during simulation.
-
-All of this happens in the goroutine dedicated to the match, ensuring isolation and no shared mutable state across matches beyond the manager’s registry.
+- Calls the Game Engine
+- Cleans up resources after the match completes
 
 ### 5) Engine simulation begins
 With folders and logs ready, the Game Manager calls the engine’s `Simulate` method to run the match:
@@ -44,7 +35,7 @@ With folders and logs ready, the Game Manager calls the engine’s `Simulate` me
 - The engine starts two nsjail sandboxes—one for each player—each bind-mounting the corresponding player directory as read-only inside the jail.
 - Contexts (with timeouts) are used for critical phases like:
   - The global wall-time budget for the sandbox process.
-  - The initial handshake timeout (waiting for `"__READY__"` from each player’s Python wrapper).
+  - The initial **HANDSHAKE** timeout (waiting for `"__READY__"` from each player’s Python wrapper).
   - Per-turn tick timeouts (waiting for the player’s actions).
 - Stderr from each sandbox is streamed concurrently and logged. This is done in background goroutines so action processing is not blocked by error IO.
 
@@ -79,21 +70,6 @@ The engine and game logic are intentionally generic. You control gameplay by edi
 
 Because the sandbox protocol is simply line-oriented JSON for state in and actions out, the surrounding orchestration—RabbitMQ, goroutines, temp folders, nsjail—stays the same while the core game changes.
 
-## Notes on Concurrency
-- A goroutine is spawned for each incoming match request to keep the consumer loop responsive and maximize throughput.
-- Use synchronization around shared maps/registries (like the Game Manager’s ongoing match count) to maintain consistency.
-- Consider configurable concurrency limits and backpressure (e.g., semaphore or worker pool) to keep resource usage bounded.
-- Long-running tasks (like IO streams from stderr) run in dedicated goroutines to avoid blocking the main turn loop.
-
-## Environment, Limits, and Timeouts
-- Configuration is centralized and controls:
-  - Paths for nsjail binaries/config and jail mount points.
-  - Resource limits: pids, memory, and CPU slices per jail.
-  - tmpfs size for ephemeral write access inside the jail.
-  - Wall, handshake, and per-tick timeouts.
-- nsjail.cfg is generated at startup from this central config, ensuring reproducible sandbox settings across matches.
-
-
 ## Usage
 
 Prerequisites:
@@ -111,9 +87,3 @@ Setup:
   - `go run ./cmd/runner` (spawns concurrent test matches using `egCode`)
 - Or build Docker images:
   - `docker compose up --build`
-
-Notes:
-- The current `cmd/runner/main.go` uses `egCode` to simulate players. To run real matches, integrate a queue and call `GameManager.NewMatch()` with actual code strings/URLs.
-- Logs: Each match writes a JSON log file under `HostSubmissionPath/<matchID>/log.txt`. Structured logs include `DEBUG`, `STATE`, `ACTION`, and `ERROR`.
-- Cleanup: Per-player directories are removed after the match completes.
-
