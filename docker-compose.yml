@@ -1,4 +1,18 @@
 services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   code-runner:
     build:
       context: .
@@ -6,6 +20,8 @@ services:
     environment:
       - MAX_CONCURRENT_MATCHES=10
       - PROD=true
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_EXCHANGE=oceanmaster_exchange
     privileged: true
     volumes:
       - ./.submissions:/submissions
@@ -14,3 +30,6 @@ services:
         limits:
           cpus: "2.0"
           memory: 2g
+    depends_on:
+      rabbitmq:
+        condition: service_healthy

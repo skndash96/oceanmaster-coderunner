@@ -29,6 +29,9 @@ type Config struct {
 	JailWallTimeoutMS      uint32
 	JailHandshakeTimeoutMS uint32
 	JailTickTimeoutMS      uint32
+
+	RabbitMQURL  string
+	ExchangeName string
 }
 
 func New() *Config {
@@ -56,6 +59,9 @@ func New() *Config {
 		JailWallTimeoutMS:      2 * 60 * 1000, // 2 minutes
 		JailHandshakeTimeoutMS: 10 * 1000,     // 10 seconds
 		JailTickTimeoutMS:      500,           // 500 milliseconds
+
+		RabbitMQURL:  getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		ExchangeName: getEnv("RABBITMQ_EXCHANGE", "oceanmaster_exchange"),
 	}
 }
 
