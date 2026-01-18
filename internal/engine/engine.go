@@ -1,15 +1,19 @@
 package engine
 
 const (
+    TotalTicks = 1000
     SpawnEnergy = 50
     VisionRadius = 4
     BaseMovementCost = 2
     BaseScrapCost = 10
     SelfDestructRange = 1
+    BasePadCoolDown = 50
+    BankDepositTime = 100
 )
 
 func (engine *GameEngine) updateState(move PlayerMoves){
     engine.Tick++
+    TickPermenantEntities()
     playerID := currentPlayerID()
     if invalid != nil { 
         return
@@ -22,12 +26,35 @@ func (engine *GameEngine) updateState(move PlayerMoves){
         engine.botAction(botID, actionCmd)
     }
 }
+func (engine *GameEngine) TickPermenantEntities{
+    for bank := range engine.Banks {
+        if (bank.DepositOccuring)
+            if (DepositTicksLeft == 1) {
+                engine.PermenantAlgae[bank.DepositOwner] += bank.DepositAmount
+                bank.DepositAmount = 0
+                bank.DepositOcurring = 0
+                bank.DepositOwner = -1
+            }
+            
+            DepositTicksLeft--
+        }
+    }
+    for Pad := range energy.EnergyPads {
+        if Pad.TicksLeft > 0{
+            Pad.TicksLeft--
+        }
+        if Pad.TicksLeft == 0{
+            Pad.Availlable = 1
+        }
+    }
+}
 
-func (engine *GameEngine) currentPlayerID(){
+func (engine *GameEngine) currentPlayerID() int{
     return engine.Tick%2
 }
 
-func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID String) (bool SpawnedBot){
+
+func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID String) (bool){
     if isValid, scrapCost := validateSpawn(spawn); isValid == true {
         bot := Bot {
             ID:             spawn.ID,
@@ -66,13 +93,13 @@ func (engine *GameEngine) actionBot(botID int, action ActionCmd){
             case "SELFDESTRUCT":
                 engine.selfDestructBot(botID)
             case "POISON":
-                if engine.isAlgae(incrementLocation(bot.Location, action.Direction)){
-                    engine.poisonAlgae(incrementLocation(bot.Location, action.Direction))
+                if engine.isAlgae(bot.Location){
+                    engine.poisonAlgae(bot.Location))
                 }
             case "LOCKPICK":
-                if engine.isNearBank(botID) {
-                    engine.startLockPick(botID)
-                }
+                engine.startLockPick(botID)
+            case "DEPOSIT":
+                engine.startDeposit(botID)
         }
     }
 }
@@ -119,10 +146,33 @@ func (engine *GameEngine) moveBot(botID int, direction String)
                 bot.X--
         } 
     }
+    engine.energyPadCheck(botID)
 }
 
-//needs to be implemented
-func (engine *GameEngine) selfDestructBot(botID int, engine *GameEngine){
+func (engine *GameEngine) energyPadCheck(botID int) {
+    bot := getBot(botID)
+    if isOnEnergyPad, padID := isOnEnergyPad(botID); isOnEnergyPad{
+        if engine.EnergyPads[padID].Availlable {
+            engine.EnergyPads.Availlable = 0
+            engine.EnergyPads.TicksLeft = engine.getPadCoolDown(padID)
+            bot.Energy = SpawnEnergy
+        }
+    }
+}
+
+func (engine *GameEngine) getPadcoolDown(padID int) (int){
+    if engine.Ticks < TotalTicks*0.3{
+        return BasePadCoolDown
+    }
+    if engine.Ticks < TotalTicks*0.3{
+        return BasePadCoolDown*0.5
+    }
+     if engine.Ticks < TotalTicks*0.3{
+        return BasePadCoolDown*0.2
+    }
+}
+
+func (engine *GameEngine) selfDestructBot(botID int){
     bot := getBot(botID)
     for botB := range engine.AllBots {
         if (math.Abs(bot.X-botB.X) <= selfDestructRange && math.Abs(bot.Y-botB.Y) <= selfDestructRange){
@@ -151,7 +201,7 @@ func (engine *GameEngine) removeShield(botID int){
     bot.TraversalCost -= EnergyDB["SHIELD"].Traversal
 }
 
-func (engine *GameEngine) validateSpawn(spawn SpawnCmd) (validSpawn bool, scrapCost int){
+func (engine *GameEngine) validateSpawn(spawn SpawnCmd) (bool, int){
     scrapCost := 0
     playerID := currentPlayerID()
 
@@ -170,7 +220,7 @@ func (engine *GameEngine) validateSpawn(spawn SpawnCmd) (validSpawn bool, scrapC
 
 }
 
-func (engine *GameEngine) locationOccupied(point Point) (occupied bool){
+func (engine *GameEngine) locationOccupied(point Point) (bool){
     for bot := range engine.Allbots{
         if point == Point {bot.X, bot.Y}{
             return false
@@ -179,7 +229,7 @@ func (engine *GameEngine) locationOccupied(point Point) (occupied bool){
     return true
 }
 
-func (engine *GameEngine) validateMove(botID int,move ActionCmd) (validMove bool, energyCost int){
+func (engine *GameEngine) validateMove(botID int,move ActionCmd) (bool, int){
     bot := getBot(botID)
     energyCost := 0
 
@@ -188,6 +238,9 @@ func (engine *GameEngine) validateMove(botID int,move ActionCmd) (validMove bool
             return false, energyCost
             }
         energyCost += bot.TraversalCost
+    }
+    if (!engine.hasAbility(botID, ActionCmd.Action)){
+        return false, energyCost
     }
     energyCost += EnergyDB[move.Action].Action
 
@@ -198,7 +251,7 @@ func (engine *GameEngine) validateMove(botID int,move ActionCmd) (validMove bool
     return true, energyCost
 }
 
-func (engine *GameEngine) calculateTraversalCost(Abilities []String) (TraversalCost int){
+func (engine *GameEngine) calculateTraversalCost(Abilities []String) (int){
     energyCost := BaseMovementCost
 
     for ability := range Abilities {
@@ -211,11 +264,29 @@ func (engine *GameEngine) resolveCollisions(moves PlayerMoves){ //Is not needed 
 
 }
 
-func (engine *GameEngine) startLockPick (botID int){
-
+func (engine *GameEngine) startLockPick(botID int){
+    bot := getBot(botID)
+    if isNearBank, bankID = engine.isNearBank(botID); isNearBank == true {
+        engine.Banks[bankID].DepositOwner = bot.ownerID 
+    }
+    else return
 }
 
-func (engine *GameEngine) isNearBank(botID int) (isNearBank bool,bankID int){
+func (engine *GameEngine) startDeposit(botID int){
+        bot := getBot(botID)
+        playerID := getPlayerID()
+        if isNearBank, bankID := isNearbank(botID); isNearBank {
+            bank := engine.Banks[bankID]
+            if bank.BankOwner == playerID && bank.DepositOccuring == 0{
+                bank.DepositOwner = playerID
+                bank.DepositTicksLeft = BankDepositTime
+                bank.DepositOccuring = 1
+                bank.DepositAmount = bot.AlgaeHeld
+            }
+        }
+}
+
+func (engine *GameEngine) isNearBank(botID int) (bool,int){
     bot := getBot(botID)
     for bankID, bank := range engine.Banks {
         if (math.Abs(bot.X-botB.X) <= BankDepositRange && math.Abs(bot.Y-botB.Y) <= BankDepositRange){
@@ -223,9 +294,9 @@ func (engine *GameEngine) isNearBank(botID int) (isNearBank bool,bankID int){
         }
     }
     return false, 0
-
 }
-func (engine *GameEngine) isOnEnergyPad(botID int) (isOnEnergyPad bool,bankID int){
+
+func (engine *GameEngine) isOnEnergyPad(botID int) (bool,int){
     bot := getBot(botID)
     for EnergyPadsID, EnergyPad := range engine.EnergyPads {
         if (EnergyPad.X == bot.X && EnergyPad.Y == bot.Y){
@@ -256,6 +327,9 @@ func (engine *GameEngine) getState(playerID int) PlayerView {
 
 func (engine *GameEngine) hasAbility(botID int, targetAbility String) bool {
     bot := getBot(botID)
+    if (targetAbility = "DEPOSIT"){
+        targetAbility = "HARVEST" //deposit automatically comes with harvest
+    }
     for _, ability := range bot.Abilities {
         if ability == targetAbility {
             return true
@@ -268,7 +342,6 @@ func (engine *GameEngine) calculateVisibleEntities(playerID int) VisibleEntities
     visibleEnemies := make([]EnemyBot, 0)
     visibleAlgae := make([]VisibleAlgae, 0)
     
-    //map of all cells that are visible or visible to a scout
     canSee := [20][20]bool{}
     canScout := [20][20]bool{}
     for _, bot := range engine.AllBots {

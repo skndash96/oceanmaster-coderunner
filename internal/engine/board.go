@@ -1,12 +1,13 @@
 package engine
 //Stores all information availlable in a game
 type GameEngine struct {
-    Ticks      int
-    Grid       [20][20]Tile
-    AllBots    map[int]*Bot //Map of Bot structures, key is its ID
-    Scraps     [2]int  // 0 -> player A, 1 -> player B
-    Banks      map[int]*Bank
-    Energypads map[int]*Pad
+    Ticks           int
+    Grid            [20][20]Tile
+    AllBots         map[int]*Bot //Map of Bot structures, key is its ID
+    Scraps          [2]int  // 0 -> player A, 1 -> player B
+    Banks           map[int]*Bank //key is bankID
+    EnergyPads      map[int]*Pad
+    PermenantAlgae  [2]int
 }
 //NEED TO FIX PLAYERID AS EITHER NUMBER OR STRING
 //NEED TO FIX THE USE OF X AND Y SOMEWHERE AND Point ELSEWHERE
@@ -31,7 +32,7 @@ CostDB := map[string]int{
     "LOCKPICK":     5,
     "SPEEDBOOST":   10,
     "POISON":       5,
-    "SHIELD":       5
+    "SHIELD":       5,
 }
 
 EnergyDB := map[string]energyCost{
@@ -57,17 +58,18 @@ type Tile struct {
 type Bank struct {
     ID               int
     X, Y             int
-    Deposit_occuring int
-    Deposit_amount   int
-    DepositOwner     int //0 = player A, 1 = player B
-    Depositticksleft int
+    DepositOccuring  int
+    DepositAmount    int
+    DepositOwner     int
+    BankOwner        int //0 = player A, 1 = player B
+    DepositTicksLeft int
 }
 
 type Pad struct {
     ID         int
     X, Y       int
     Availlable int
-    Ticksleft  int
+    TicksLeft  int
 }
 
 type Point struct {
@@ -146,21 +148,22 @@ func initGameEngine() *GameEngine{
 
 func (ge *GameEngine) initBanks {
 
-    ge.Banks[1] = initBank(1, 4, 4)
-    ge.Banks[2] = initBank(2, 14, 4)
-    ge.Banks[3] = initBank(3, 4, 14)
-    ge.Banks[4] = initBank(4, 14, 14)
+    ge.Banks[1] = initBank(1, 4, 4, 0)
+    ge.Banks[2] = initBank(2, 14, 4, 1)
+    ge.Banks[3] = initBank(3, 4, 14, 0)
+    ge.Banks[4] = initBank(4, 14, 14, 1)
 }
 
 //Need to update Bank structure to have ownership of Banks(can't deposit in enemy bank)
-func initBank(id, x, y int) *Bank {
+func initBank(id, x, y int, playerID int) *Bank {
     return &Bank{
         ID:               id,
         X:                x,
         Y:                y,
         Deposit_occuring: 0, 
         Deposit_amount:   0,
-        DepositOwner:    -1,
+        BankOwner:        playerID,
+        DepositOwner:     -1,
         Depositticksleft: 0, 
     }
 }
