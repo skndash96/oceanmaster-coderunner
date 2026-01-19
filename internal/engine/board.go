@@ -1,6 +1,5 @@
 package engine
 import (
-    "math"
     "math/rand"
 )
 //Stores all information availlable in a game
@@ -40,7 +39,7 @@ var CostDB = map[string]int{
     "SHIELD":       5,
 }
 
-var EnergyDB = map[string]energyCost{
+var EnergyDB = map[string]EnergyCost{
     "HARVEST":      EnergyCost{0, 1},
     "SCOUT":        EnergyCost{1.5, 0}, //Pulse mechanic needs be discussed
     "SELFDESTRUCT": EnergyCost{0.5, 0},
@@ -48,10 +47,10 @@ var EnergyDB = map[string]energyCost{
     "POISON":       EnergyCost{0.5, 2},
     "LOCKPICK":     EnergyCost{1.5, 0},
     "SHIELD":       EnergyCost{0.25, 0},
-    "DEPOSIT":      EnergyCost{0, 1}
+    "DEPOSIT":      EnergyCost{0, 1},
 }
 
-type energyCost struct {
+type EnergyCost struct {
     Traversal   float64
     Ability     float64
 }
@@ -86,7 +85,7 @@ type Point struct {
 }
 type PlayerView struct {
     Tick              int               `json:"tick"` //json tag
-    Scraps            int               `json:"scraps"` //e.g value of Scraps variable will be set to value of scraps in json 
+    Scraps            int               `json:"scraps"` //e.g value of Scraps variable will be set to value of scraps in json
     Algae             int               `json:"algae"`
     BotCount          int               `json:"bot_count"`
     MaxBots           int               `json:"max_bots"`
@@ -98,7 +97,7 @@ type PlayerView struct {
 }
 
 type VisibleEntities struct {
-    Enemies []EnemyBot     `json:"enemies"` 
+    Enemies []EnemyBot     `json:"enemies"`
     Algae   []VisibleAlgae `json:"algae"`
 }
 
@@ -113,7 +112,7 @@ type VisibleAlgae struct {
     Location Point  `json:"location"`
     // X        int    `json:"x"`
     // Y        int    `json:"y"`
-    IsPoison string `json:"is_poison"` 
+    IsPoison string `json:"is_poison"`
 }
 
 type PermanentEntities struct {
@@ -133,22 +132,22 @@ type SpawnCmd struct {
 }
 
 type ActionCmd struct {
-    Action    string `json:"action"`    
-    Direction string `json:"direction"` 
+    Action    string `json:"action"`
+    Direction string `json:"direction"`
 }
 //Starts empty game engine instance
 func initGameEngine() *GameEngine{
     ge := &GameEngine {
         Ticks: 1,
         Grid: [20][20]Tile{},
-        Scraps: [2]int      
+        Scraps: [2]int{},
 
         AllBots:    make(map[int]*Bot),
         Banks:      make(map[int]*Bank),
         EnergyPads: make(map[int]*Pad),
     }
     ge.Scraps[0] = 100
-    ge.Scraps[1] = 100  
+    ge.Scraps[1] = 100
 
     ge.initBanks()
     ge.initPads()
@@ -169,11 +168,11 @@ func initBank(id int, x int, y int, playerID int) *Bank {
     return &Bank{
         ID:               id,
         Location:         Point {x, y},
-        DepositOccuring:  false, 
+        DepositOccuring:  false,
         DepositAmount:    0,
         BankOwner:        playerID,
         DepositOwner:     -1,
-        DepositTicksLeft: 0, 
+        DepositTicksLeft: 0,
     }
 }
 
@@ -187,7 +186,7 @@ func initPad(id int, x int, y int) *Pad {
         ID:          id,
         Location:    Point{x,y},
         Available:   true,
-        TicksLeft:   BasePadCoolDown
+        TicksLeft:   BasePadCoolDown,
 
     }
 }
@@ -206,4 +205,3 @@ func (ge *GameEngine) generateAlgae() {
         }
     }
 }
-
