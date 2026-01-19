@@ -1,23 +1,28 @@
 package engine
+
 import (
     "math/rand"
 )
-//Stores all information availlable in a game
+
+// Stores all information availlable in a game
 type GameEngine struct {
-    Ticks           int
-    Grid            [20][20]Tile
-    AllBots         map[int]*Bot //Map of Bot structures, key is its ID
-    Scraps          [2]int  // 0 -> player A, 1 -> player B
-    Banks           map[int]*Bank //key is bankID
-    EnergyPads      map[int]*Pad
-    PermanentAlgae  [2]int
+    Ticks          int
+    Grid           [20][20]Tile
+    AllBots        map[int]*Bot  //Map of Bot structures, key is its ID
+    Scraps         [2]int        // 0 -> player A, 1 -> player B
+    Banks          map[int]*Bank //key is bankID
+    EnergyPads     map[int]*Pad
+    PermanentAlgae [2]int
+    Winner         int
+    AlgaeCount     int
 }
-//NEED TO FIX PLAYERID AS EITHER NUMBER OR STRING
-//NEED TO FIX THE USE OF X AND Y SOMEWHERE AND Point ELSEWHERE
+
+// NEED TO FIX PLAYERID AS EITHER NUMBER OR STRING
+// NEED TO FIX THE USE OF X AND Y SOMEWHERE AND Point ELSEWHERE
 type Bot struct {
-    ID            int
-    OwnerID       int // 0 = Player A, 1 = Player B
-//    X, Y          int
+    ID      int
+    OwnerID int // 0 = Player A, 1 = Player B
+    //    X, Y          int
     Location      Point
     Energy        float64
     Scraps        int
@@ -25,8 +30,8 @@ type Bot struct {
     VisionRadius  int //Can be removed as vision is mapwide now
     AlgaeHeld     int
     TraversalCost float64
-
 }
+
 // adding a constant movement cost to bot value. to not need to calculate it on every move
 
 var CostDB = map[string]int{
@@ -51,8 +56,8 @@ var EnergyDB = map[string]EnergyCost{
 }
 
 type EnergyCost struct {
-    Traversal   float64
-    Ability     float64
+    Traversal float64
+    Ability   float64
 }
 
 type Tile struct {
@@ -61,9 +66,9 @@ type Tile struct {
 }
 
 type Bank struct {
-    ID               int
-    Location         Point
-//    X, Y             int
+    ID       int
+    Location Point
+    //    X, Y             int
     DepositOccuring  bool
     DepositAmount    int
     DepositOwner     int
@@ -72,11 +77,11 @@ type Bank struct {
 }
 
 type Pad struct {
-    ID         int
-    Location   Point
+    ID       int
+    Location Point
     // X, Y       int
-    Available  bool
-    TicksLeft  int
+    Available bool
+    TicksLeft int
 }
 
 type Point struct {
@@ -84,7 +89,7 @@ type Point struct {
     Y int
 }
 type PlayerView struct {
-    Tick              int               `json:"tick"` //json tag
+    Tick              int               `json:"tick"`   //json tag
     Scraps            int               `json:"scraps"` //e.g value of Scraps variable will be set to value of scraps in json
     Algae             int               `json:"algae"`
     BotCount          int               `json:"bot_count"`
@@ -109,42 +114,44 @@ type EnemyBot struct {
 }
 
 type VisibleAlgae struct {
-    Location Point  `json:"location"`
+    Location Point `json:"location"`
     // X        int    `json:"x"`
     // Y        int    `json:"y"`
     IsPoison string `json:"is_poison"`
 }
 
 type PermanentEntities struct {
-    Banks      []Bank      `json:"banks"`
-    EnergyPads []Pad `json:"energypads"`
+    Banks      []Bank `json:"banks"`
+    EnergyPads []Pad  `json:"energypads"`
 }
 
 type PlayerMoves struct {
-    Tick     int                  `json:"tick"`
-    Spawns   []SpawnCmd           `json:"spawn"`
-    Actions  map[int]ActionCmd `json:"actions"`
+    Tick    int               `json:"tick"`
+    Spawns  map[int]SpawnCmd  `json:"spawn"`
+    Actions map[int]ActionCmd `json:"actions"`
 }
 
 type SpawnCmd struct {
-    Abilities  []string `json:"template"`
-    Location   Point    `json:"loc"`
+    Abilities []string `json:"template"`
+    Location  Point    `json:"loc"`
 }
 
 type ActionCmd struct {
     Action    string `json:"action"`
     Direction string `json:"direction"`
 }
-//Starts empty game engine instance
-func initGameEngine() *GameEngine{
-    ge := &GameEngine {
-        Ticks: 1,
-        Grid: [20][20]Tile{},
+
+// Starts empty game engine instance
+func initGameEngine() *GameEngine {
+    ge := &GameEngine{
+        Ticks:  1,
+        Grid:   [20][20]Tile{},
         Scraps: [2]int{},
 
         AllBots:    make(map[int]*Bot),
         Banks:      make(map[int]*Bank),
         EnergyPads: make(map[int]*Pad),
+        Winner:     -1,
     }
     ge.Scraps[0] = 100
     ge.Scraps[1] = 100
@@ -163,11 +170,11 @@ func (ge *GameEngine) initBanks() {
     ge.Banks[4] = initBank(4, 14, 14, 1)
 }
 
-//Need to update Bank structure to have ownership of Banks(can't deposit in enemy bank)
+// Need to update Bank structure to have ownership of Banks(can't deposit in enemy bank)
 func initBank(id int, x int, y int, playerID int) *Bank {
     return &Bank{
         ID:               id,
-        Location:         Point {x, y},
+        Location:         Point{x, y},
         DepositOccuring:  false,
         DepositAmount:    0,
         BankOwner:        playerID,
@@ -183,11 +190,10 @@ func (ge *GameEngine) initPads() {
 
 func initPad(id int, x int, y int) *Pad {
     return &Pad{
-        ID:          id,
-        Location:    Point{x,y},
-        Available:   true,
-        TicksLeft:   BasePadCoolDown,
-
+        ID:        id,
+        Location:  Point{x, y},
+        Available: true,
+        TicksLeft: BasePadCoolDown,
     }
 }
 
@@ -199,7 +205,9 @@ func (ge *GameEngine) generateAlgae() {
             roll := rand.Float64()
             if roll < 0.15 {
                 ge.Grid[x][y].HasAlgae = true
-            } else if roll < 0.20 {                 //5% chance of poison
+                ge.AlgaeCount++
+            } else if roll < 0.20 { //5% chance of poison
+                ge.Grid[x][y].HasAlgae = true
                 ge.Grid[x][y].IsPoison = true
             }
         }
