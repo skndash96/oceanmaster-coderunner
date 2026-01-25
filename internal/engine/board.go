@@ -185,7 +185,7 @@ func initBank(id int, x int, y int, playerID int) *Bank {
 
 func (ge *GameEngine) initPads() {
     ge.EnergyPads[0] = initPad(1, 9, 6)
-    ge.EnergyPads[1] = initPad(1, 9, 13)
+    ge.EnergyPads[1] = initPad(2, 9, 13)
 }
 
 func initPad(id int, x int, y int) *Pad {
