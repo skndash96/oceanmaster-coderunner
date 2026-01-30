@@ -53,7 +53,7 @@ var EnergyDB = map[string]EnergyCost{
     "LOCKPICK":     EnergyCost{1.5, 0},
     "SHIELD":       EnergyCost{0.25, 0},
     "DEPOSIT":      EnergyCost{0, 1},
-}
+} 
 
 type EnergyCost struct {
     Traversal float64
@@ -88,6 +88,20 @@ type Point struct {
     X int
     Y int
 }
+
+type GameView struct {
+    Tick              int               `json:"tick"`
+    Scraps            [2]int            `json:"scraps"`
+    AllBots           map[int]Bot       `json:"bots"`
+    Algae             [2]int            `json:"algae_count"`
+    BotCount          int               `json:"bot_count"`
+    MaxBots           int               `json:"max_bots"`
+    Width             int               `json:"width"`
+    Height            int               `json:"height"`
+    PermanentEntities PermanentEntities `json:permanent_entities`
+    AlgaeMap          []VisibleAlgae    `json:"algae"`
+}
+
 type PlayerView struct {
     Tick              int               `json:"tick"`   //json tag
     Scraps            int               `json:"scraps"` //e.g value of Scraps variable will be set to value of scraps in json
@@ -96,7 +110,7 @@ type PlayerView struct {
     MaxBots           int               `json:"max_bots"`
     Width             int               `json:"width"`
     Height            int               `json:"height"`
-    Bots              []Bot             `json:"bots"`
+    Bots              map[int]Bot       `json:"bots"`
     VisibleEntities   VisibleEntities   `json:"visible_entities"`
     PermanentEntities PermanentEntities `json:"permanent_entities"`
 }
@@ -121,8 +135,8 @@ type VisibleAlgae struct {
 }
 
 type PermanentEntities struct {
-    Banks      []Bank `json:"banks"`
-    EnergyPads []Pad  `json:"energypads"`
+    Banks      map[int]Bank `json:"banks"`
+    EnergyPads map[int]Pad  `json:"energypads"`
 }
 
 type PlayerMoves struct {
