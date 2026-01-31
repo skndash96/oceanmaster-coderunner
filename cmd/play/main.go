@@ -12,7 +12,8 @@ import (
 )
 
 func main() {
-	ge := engine.InitGameEngine()
+	gl := engine.NewGameLogger(os.Stdout)
+	ge := engine.InitGameEngine(gl)
 	reader := bufio.NewReader(os.Stdin)
 
 	pendingMoves := engine.PlayerMoves{

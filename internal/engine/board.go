@@ -68,27 +68,27 @@ type Tile struct {
 }
 
 type Bank struct {
-    ID       int
-    Location Point
+    ID       int `json:"id"`
+    Location Point `json:"location"`
     //    X, Y             int
-    DepositOccuring  bool
-    DepositAmount    int
-    DepositOwner     int
-    BankOwner        int //0 = player A, 1 = player B
-    DepositTicksLeft int
+    DepositOccuring  bool `json:"deposit_occuring"`
+    DepositAmount    int `json:"deposit_amount"`
+    DepositOwner     int `json:"deposit_owner"`
+    BankOwner        int `json:"bank_owner"` //0 = player A, 1 = player B
+    DepositTicksLeft int `json:"deposit_ticks_left"`
 }
 
 type Pad struct {
-    ID       int
-    Location Point
+    ID       int `json:"id"`
+    Location Point `json:"location"`
     // X, Y       int
-    Available bool
-    TicksLeft int
+    Available bool `json:"available"`
+    TicksLeft int `json:"ticks_left"`
 }
 
 type Point struct {
-    X int
-    Y int
+    X int `json:"x"`
+    Y int `json:"y"`
 }
 
 type GameView struct {
@@ -100,8 +100,7 @@ type GameView struct {
     MaxBots           int               `json:"max_bots"`
     Width             int               `json:"width"`
     Height            int               `json:"height"`
-    // TODO: Bank and one more struct doesn't have json tags
-    PermanentEntities PermanentEntities `json:permanent_entities`
+    PermanentEntities PermanentEntities `json:"permanent_entities"`
     AlgaeMap          []VisibleAlgae    `json:"algae"`
 }
 

@@ -1,15 +1,15 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"log"
-
-	"sync"
 
 	"github.com/delta/code-runner/internal/cgroup"
 	"github.com/delta/code-runner/internal/config"
 	"github.com/delta/code-runner/internal/manager"
 	"github.com/delta/code-runner/internal/nsjail"
+	"github.com/delta/code-runner/internal/queue"
+	"github.com/rabbitmq/amqp091-go"
 )
 
 func run() error {
@@ -25,38 +25,54 @@ func run() error {
 		return err
 	}
 
-	manager := manager.NewGameManager(cfg)
+	gameManager := manager.NewGameManager(cfg)
 
-	// TODO: Create RabbitMQ Consumer (max 20 or so concurrency)
-	// TODO: Pass incoming matches to game manager
-	// Make sure new match is called in a goroutine
+	matchJobQ, err := queue.NewMatchJobQueue(cfg.MatchJobQueueConfig)
+	if err != nil {
+		return err
+	}
+	defer matchJobQ.Close()
 
-	var (
-		mCnt int = int(cfg.MaxConcurrentMatches)
-		wg   sync.WaitGroup
-	)
-
-	// Testing: Simulate mCnt matches at once
-	wg.Add(mCnt)
-
-	for i := range mCnt {
-		go func() {
-			defer wg.Done()
-
-			if err := manager.NewMatch(
-				fmt.Sprintf("%d", 2*i),
-				fmt.Sprintf("player%d", 2*i),
-				fmt.Sprintf("player%d", 2*i+1),
-				egCode,
-				egCode,
-			); err != nil {
-				fmt.Printf("Failed to simulate match %d: %v\n", 2*i, err)
-			}
-
-		}()
+	err = matchJobQ.SetMaxConcurrentMatches(cfg.MaxConcurrentMatches)
+	if err != nil {
+		return err
 	}
 
-	wg.Wait()
+	msgs, err := matchJobQ.Consume()
+	if err != nil {
+		return err
+	}
+
+	sem := make(chan struct{}, cfg.MaxConcurrentMatches)
+
+	log.Printf("consumer started with %d max_concurrency)\n", cfg.MaxConcurrentMatches)
+
+	for d := range msgs {
+		sem <- struct{}{} // blocks if max concurrency reached
+
+		go func(delivery amqp091.Delivery) {
+			defer func() { <-sem }()
+
+			var job manager.MatchJob
+			if err := json.Unmarshal(delivery.Body, &job); err != nil {
+				log.Println("INVALID JOB:", err)
+				delivery.Nack(false, false) // discard
+				return
+			}
+
+			log.Println("RUNNING MATCH:", job.ID)
+
+			if err := gameManager.NewMatch(job); err != nil {
+				log.Println("MATCH FAILED:", err)
+				delivery.Nack(false, false) // discard
+				// TODO: Try atleast twice and then discard
+				return
+			}
+
+			log.Println("MATCH FINISHED:", job.ID)
+			delivery.Ack(false)
+		}(d)
+	}
 
 	return nil
 }

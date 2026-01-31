@@ -10,6 +10,8 @@ import (
 	"github.com/delta/code-runner/internal/sandbox"
 )
 
+const HANDSHAKE_MSG = "__READY_V1__"
+
 type Match struct {
 	ID         string
 	Player1    string
@@ -30,6 +32,7 @@ func NewMatch(id, p1, p2, p1Dir, p2Dir string, gl *GameLogger) *Match {
 	}
 }
 
+// returned error is also logged to gameLog file by the manager
 func (m *Match) Simulate(cfg *config.Config) error {
 	m.gl.Log(GameLogDebug, "Starting sandbox")
 
@@ -73,10 +76,10 @@ func (m *Match) Simulate(cfg *config.Config) error {
 		isP1Turn  = true
 	)
 
-	m.gl.Log(GameLogGameState, ge)
-
 	for {
-		turnCtx, cancelTurn := context.WithTimeout(matchCtx, time.Duration(cfg.JailTickTimeoutMS)*time.Millisecond)
+		m.gl.Log(GameLogGameState, ge.getGameView())
+
+		turnCtx, cancelTurnCtx := context.WithTimeout(matchCtx, time.Duration(cfg.JailTickTimeoutMS)*time.Millisecond)
 
 		move := PlayerMoves{}
 		var turnErr error
@@ -89,7 +92,7 @@ func (m *Match) Simulate(cfg *config.Config) error {
 			m.gl.Log(GameLogDebug, "Completed Turn")
 		}
 
-		cancelTurn()
+		cancelTurnCtx()
 
 		if turnErr != nil {
 			// should i end the match as failed?
@@ -103,12 +106,12 @@ func (m *Match) Simulate(cfg *config.Config) error {
 
 		m.gl.Log(GameLogGameAction, move)
 
-		// argpass by value
 		ge.UpdateState(move)
 
 		isP1Turn = !isP1Turn
 
 		if ge.Winner != -1 {
+			m.gl.Log(GameLogDebug, fmt.Sprintf("Game Successfully Ended with status %d", ge.Winner))
 			break
 		}
 	}
@@ -127,7 +130,7 @@ func handshakeSandbox(mCtx context.Context, s *sandbox.Sandbox, timeoutMS uint32
 		return err
 	}
 
-	if strings.TrimSpace(data) != "__READY__" {
+	if strings.TrimSpace(data) != HANDSHAKE_MSG {
 		return fmt.Errorf("Invalid handshake")
 	}
 
@@ -143,6 +146,7 @@ func doTurn(turnCtx context.Context, s *sandbox.Sandbox, gl *GameLogger, label s
 
 	gl.Log(GameLogDebug, label, "Waiting for output")
 
+	// TODO: use a loop until valid output without error is received and ignore output with invalid tick number
 	if err := s.RecvOutput(turnCtx, out); err != nil {
 		return fmt.Errorf("receive actions: %w", err)
 	}

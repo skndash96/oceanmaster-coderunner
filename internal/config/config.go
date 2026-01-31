@@ -5,12 +5,18 @@ import (
 	"strconv"
 )
 
-type JailConfig struct {
+type MatchJobQueueConfig struct {
+	URL string
+	ExchangeName string
+	QueueName string
+	RoutingKey string
 }
 
 type Config struct {
 	IsProd               bool
 	MaxConcurrentMatches int
+
+	MatchJobQueueConfig MatchJobQueueConfig
 
 	NsjailPath    string
 	NsjailCfgPath string
@@ -37,6 +43,13 @@ func New() *Config {
 	return &Config{
 		IsProd:               isProd,
 		MaxConcurrentMatches: getEnv("MAX_CONCURRENT_MATCHES", 10),
+
+		MatchJobQueueConfig: MatchJobQueueConfig{
+			URL: getEnv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672"),
+			ExchangeName: getEnv("RABBITMQ_EXCHANGE", "match_jobs"),
+			QueueName: getEnv("RABBITMQ_QUEUE", "match_jobs"),
+			RoutingKey: getEnv("RABBITMQ_ROUTING_KEY", "match_jobs"),
+		},
 
 		NsjailPath:    "/app/nsjail",
 		NsjailCfgPath: "/app/nsjail.cfg",

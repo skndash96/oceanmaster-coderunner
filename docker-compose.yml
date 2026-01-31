@@ -1,11 +1,10 @@
 services:
-  code-runner:
+  simulator:
     build:
       context: .
       dockerfile: Dockerfile
-    environment:
-      - MAX_CONCURRENT_MATCHES=10
-      - PROD=true
+    env_file:
+      - .env
     privileged: true
     volumes:
       - ./.submissions:/submissions
@@ -14,3 +13,20 @@ services:
         limits:
           cpus: "2.0"
           memory: 2g
+
+  rabbitmq:
+      image: rabbitmq:3.12-management #remove management for NO gui
+      container_name: rabbitmq
+      ports:
+        - "5672:5672" #rmq
+        - "15672:15672" #gui
+      environment:
+        RABBITMQ_DEFAULT_USER: guest
+        RABBITMQ_DEFAULT_PASS: guest
+        RABBITMQ_DEFAULT_VHOST: /
+      volumes:
+        - rabbitmq-data:/var/lib/rabbitmq
+      restart: unless-stopped
+
+volumes:
+  rabbitmq-data:
