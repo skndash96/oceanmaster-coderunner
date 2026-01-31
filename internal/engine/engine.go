@@ -19,7 +19,7 @@ const (
     MAXALGAEHELD      = 5
 )
 
-func (engine *GameEngine) updateState(move PlayerMoves) {
+func (engine *GameEngine) UpdateState(move PlayerMoves) {
     engine.Ticks++
     engine.TickPermanentEntities()
     playerID := engine.currentPlayerID()
@@ -86,7 +86,7 @@ func (engine *GameEngine) currentPlayerID() int {
 func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID int, botID int) bool {
     if isValid, scrapCost := engine.validateSpawn(spawn); isValid {
         bot := Bot{
-            ID:            botID, 
+            ID:            botID,
             OwnerID:       playerID,
             Location:      spawn.Location,
             Energy:        SpawnEnergy,
@@ -263,12 +263,13 @@ func (engine *GameEngine) validateSpawn(spawn SpawnCmd) (bool, int) {
 }
 
 func (engine *GameEngine) locationOccupied(point Point) bool {
+	// TODO: What about other factors like banks ?
     for _, bot := range engine.AllBots {
         if point == bot.Location {
-            return false
+            return true
         }
     }
-    return true
+    return false
 }
 
 func (engine *GameEngine) validateMove(botID int, move ActionCmd) (bool, float64) {

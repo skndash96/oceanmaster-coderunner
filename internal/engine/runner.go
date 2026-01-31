@@ -69,23 +69,23 @@ func (m *Match) Simulate(cfg *config.Config) error {
 	m.gl.Log(GameLogDebug, "Completed Handshakes")
 
 	var (
-		gameState = NewGameState()
+		ge = InitGameEngine()
 		isP1Turn  = true
 	)
 
-	m.gl.Log(GameLogGameState, gameState)
+	m.gl.Log(GameLogGameState, ge)
 
 	for {
 		turnCtx, cancelTurn := context.WithTimeout(matchCtx, time.Duration(cfg.JailTickTimeoutMS)*time.Millisecond)
 
-		actions := []Action{}
+		move := PlayerMoves{}
 		var turnErr error
 
 		if isP1Turn {
-			turnErr = doTurn(turnCtx, s1, m.gl, "p1", &gameState, &actions)
+			turnErr = doTurn(turnCtx, s1, m.gl, "p1", ge.getState(PlayerOne), &move)
 			m.gl.Log(GameLogDebug, "Completed Turn")
 		} else {
-			turnErr = doTurn(turnCtx, s2, m.gl, "p2", &gameState, &actions)
+			turnErr = doTurn(turnCtx, s2, m.gl, "p2", ge.getState(PlayerTwo), &move)
 			m.gl.Log(GameLogDebug, "Completed Turn")
 		}
 
@@ -101,17 +101,14 @@ func (m *Match) Simulate(cfg *config.Config) error {
 			}
 		}
 
-		m.gl.Log(GameLogGameAction, actions)
+		m.gl.Log(GameLogGameAction, move)
 
 		// argpass by value
-		newState, ok, hasEnded := UpdateGameState(gameState, actions)
-		if ok {
-			gameState = newState
-		}
+		ge.UpdateState(move)
 
 		isP1Turn = !isP1Turn
 
-		if hasEnded {
+		if ge.Winner != -1 {
 			break
 		}
 	}
@@ -137,10 +134,10 @@ func handshakeSandbox(mCtx context.Context, s *sandbox.Sandbox, timeoutMS uint32
 	return nil
 }
 
-func doTurn(turnCtx context.Context, s *sandbox.Sandbox, gl *GameLogger, label string, state *GameState, out *[]Action) error {
+func doTurn(turnCtx context.Context, s *sandbox.Sandbox, gl *GameLogger, label string, playerView PlayerView, out *PlayerMoves) error {
 	gl.Log(GameLogDebug, label, "Sending state")
 
-	if err := s.Send(state); err != nil {
+	if err := s.Send(playerView); err != nil {
 		return fmt.Errorf("send state: %w", err)
 	}
 

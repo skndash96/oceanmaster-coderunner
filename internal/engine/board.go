@@ -141,8 +141,13 @@ type ActionCmd struct {
     Direction string `json:"direction"`
 }
 
+const (
+    PlayerOne = iota
+    PlayerTwo
+)
+
 // Starts empty game engine instance
-func initGameEngine() *GameEngine {
+func InitGameEngine() *GameEngine {
     ge := &GameEngine{
         Ticks:  1,
         Grid:   [20][20]Tile{},
