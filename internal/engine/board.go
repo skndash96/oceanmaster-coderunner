@@ -15,6 +15,8 @@ type GameEngine struct {
     PermanentAlgae [2]int
     Winner         int
     AlgaeCount     int
+
+    gl *GameLogger
 }
 
 // NEED TO FIX PLAYERID AS EITHER NUMBER OR STRING
@@ -162,7 +164,7 @@ const (
 )
 
 // Starts empty game engine instance
-func InitGameEngine() *GameEngine {
+func InitGameEngine(gl *GameLogger) *GameEngine {
     ge := &GameEngine{
         Ticks:  1,
         Grid:   [20][20]Tile{},
@@ -172,6 +174,8 @@ func InitGameEngine() *GameEngine {
         Banks:      make(map[int]*Bank),
         EnergyPads: make(map[int]*Pad),
         Winner:     -1,
+
+        gl: gl,
     }
     ge.Scraps[0] = 100
     ge.Scraps[1] = 100

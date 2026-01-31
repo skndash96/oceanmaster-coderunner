@@ -69,7 +69,7 @@ func (m *Match) Simulate(cfg *config.Config) error {
 	m.gl.Log(GameLogDebug, "Completed Handshakes")
 
 	var (
-		ge = InitGameEngine()
+		ge = InitGameEngine(m.gl)
 		isP1Turn  = true
 	)
 
