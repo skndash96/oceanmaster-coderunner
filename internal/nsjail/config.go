@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/delta/code-runner/internal/cgroup"
 	"github.com/delta/code-runner/internal/config"
 	"github.com/delta/code-runner/internal/nsjail/proto_nsjail"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -23,6 +22,7 @@ func WriteConfig(c *config.Config, cg cgroup.Cgroup) (*proto_nsjail.NsJailConfig
 	msg.RlimitFsizeType = proto_nsjail.RLimit_HARD.Enum()
 	msg.RlimitNofileType = proto_nsjail.RLimit_HARD.Enum()
 
+	// see cgroup directory README.md
 	msg.CgroupPidsMax = proto.Uint64(c.JailCGroupPidsMax)
 	msg.CgroupMemMax = proto.Uint64(c.JailCGroupMemMax)
 	msg.CgroupCpuMsPerSec = proto.Uint32(c.JailCGroupCpuMsPerSec)
