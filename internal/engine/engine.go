@@ -1,6 +1,9 @@
 package engine
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 const (
 	TotalTicks        = 1000
@@ -20,9 +23,9 @@ const (
 )
 
 func (engine *GameEngine) UpdateState(move PlayerMoves) {
-    engine.Ticks++
-    engine.TickPermanentEntities()
-    playerID := engine.currentPlayerID()
+  engine.Ticks++ // In Initgame, ticks is set to 1 but incrementing at the start makes it 2 (no?)? is that ok? probably cause we're not using tick number anywhere
+  engine.TickPermanentEntities() // should this happen every tick or every 2 ticks? i think 2
+  playerID := engine.currentPlayerID()
 
 	for botID, spawnCmd := range move.Spawns {
 		engine.spawnBot(spawnCmd, playerID, botID)
@@ -80,7 +83,7 @@ func (engine *GameEngine) CheckWinCondition() int {
 }
 
 func (engine *GameEngine) currentPlayerID() int {
-	return engine.Ticks % 2
+	return engine.Ticks % 2 // TODO: if tick is odd, then playerID is 1, else 0.   we need 0 or 1 right? not 1 or 0. Use the PlayerOne PlayerTwo iota thing
 }
 
 func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID int, botID int) bool {
@@ -103,7 +106,6 @@ func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID int, botID int) bool
     }
 }
 
-// BOT LOCATION IS MESSED UP. DIRECT USED SOMEWHERE POINT USED ELSEWHERE //fixed
 func (engine *GameEngine) actionBot(botID int, action ActionCmd) {
 	bot := engine.getBot(botID)
 	if bot == nil {
@@ -132,6 +134,7 @@ func (engine *GameEngine) actionBot(botID int, action ActionCmd) {
 }
 
 func incrementLocation(loc Point, direction string) Point {
+	// TODO: Validate location (wall / end of grid)??
 	point := loc
 	switch direction {
 	case "NORTH":
@@ -149,6 +152,7 @@ func incrementLocation(loc Point, direction string) Point {
 func (engine *GameEngine) moveBot(botID int, direction string) {
 	bot := engine.getBot(botID)
 	newLocation := bot.Location
+	// TODO: Collision??
 	if engine.hasAbility(botID, "SPEEDBOOST") {
 		switch direction {
 		case "NORTH":
@@ -230,16 +234,18 @@ func (engine *GameEngine) selfDestructBot(botID int) {
 
 func (engine *GameEngine) KillBot(botID int) {
 	delete(engine.AllBots, botID)
+	// TODO: Afaik shoudn't it drop scraps??
 }
 
 func (engine *GameEngine) removeShield(botID int) {
 	bot := engine.getBot(botID)
-	for index, ability := range bot.Abilities {
-		if ability == "SHIELD" {
-			bot.Abilities = append(bot.Abilities[:index], bot.Abilities[index+1:]...)
-			break
+	newAbilities := make([]string, 0, len(bot.Abilities)-1)
+	for _, ability := range bot.Abilities {
+		if ability != "SHIELD" {
+			newAbilities = append(newAbilities, ability)
 		}
 	}
+	bot.Abilities = newAbilities
 	bot.TraversalCost -= EnergyDB["SHIELD"].Traversal
 }
 
@@ -287,6 +293,7 @@ func (engine *GameEngine) validateMove(botID int, move ActionCmd) (bool, float64
 	}
 	energyCost += EnergyDB[move.Action].Ability
 
+	// THINK: is traversal cost should be inmplemented in python lib?
 	if energyCost > bot.Energy {
 		return false, energyCost
 	}
@@ -302,10 +309,6 @@ func (engine *GameEngine) calculateTraversalCost(Abilities []string) float64 {
 	}
 	return energyCost
 }
-
-/*func (engine *GameEngine) resolveCollisions(moves PlayerMoves) { //Is not needed anymore as the first move will be processed first now.
-
-}*/
 
 func (engine *GameEngine) harvestAlgae(botID int) {
 	bot := engine.getBot(botID)
@@ -396,12 +399,8 @@ func (engine *GameEngine) hasAbility(botID int, targetAbility string) bool {
 	if targetAbility == "DEPOSIT" {
 		targetAbility = "HARVEST" //deposit automatically comes with harvest
 	}
-	for _, ability := range bot.Abilities {
-		if ability == targetAbility {
-			return true
-		}
-	}
-	return false
+
+	return slices.Contains(bot.Abilities, targetAbility)
 }
 
 func (engine *GameEngine) getState(playerID int) PlayerView {
@@ -423,7 +422,7 @@ func (engine *GameEngine) getState(playerID int) PlayerView {
 	}
 
 	return PlayerView{
-		Tick:            engine.Ticks,
+		Tick:            engine.Ticks, // THINK: at this point, the UpdateState function already did engine.Ticks++, is it correct?
 		Scraps:          engine.Scraps[playerID],
 		Algae:           engine.PermanentAlgae[playerID],
 		BotCount:        len(playerBots),
@@ -473,8 +472,8 @@ func (engine *GameEngine) getGameView() GameView {
 
 func (engine *GameEngine) getAlgaeMap() []VisibleAlgae {
 	visibleAlgae := make([]VisibleAlgae, 0)
-	for x := 0; x < BOARDWIDTH; x++ {
-		for y := 0; y < BOARDHEIGHT; y++ {
+	for x := range BOARDWIDTH {
+		for y := range BOARDHEIGHT {
 			tile := engine.Grid[x][y]
 			if tile.HasAlgae {
 				poisonStatus := ""
@@ -545,8 +544,8 @@ func (engine *GameEngine) calculateVisibleEntities(playerID int) VisibleEntities
 		}
 	}
 	//map of all algae in the region
-	for x := 0; x < 20; x++ {
-		for y := 0; y < 20; y++ {
+	for x := range 20 {
+		for y := range 20 {
 			tile := engine.Grid[x][y]
 			if tile.HasAlgae /*&& canSee[x][y]*/ {
 				poisonStatus := "UNKNOWN"

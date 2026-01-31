@@ -24,9 +24,8 @@ type GameEngine struct {
 type Bot struct {
     ID      int
     OwnerID int // 0 = Player A, 1 = Player B
-    //    X, Y          int
     Location      Point
-    Energy        float64
+    Energy        float64   // small THINK: later, use int if possible. idt energy has to be decimal
     Scraps        int
     Abilities     []string
     VisionRadius  int //Can be removed as vision is mapwide now
@@ -47,14 +46,14 @@ var CostDB = map[string]int{
 }
 
 var EnergyDB = map[string]EnergyCost{
-    "HARVEST":      EnergyCost{0, 1},
-    "SCOUT":        EnergyCost{1.5, 0}, //Pulse mechanic needs be discussed
-    "SELFDESTRUCT": EnergyCost{0.5, 0},
-    "SPEEDBOOST":   EnergyCost{1, 0},
-    "POISON":       EnergyCost{0.5, 2},
-    "LOCKPICK":     EnergyCost{1.5, 0},
-    "SHIELD":       EnergyCost{0.25, 0},
-    "DEPOSIT":      EnergyCost{0, 1},
+    "HARVEST":      {0, 1},
+    "SCOUT":        {1.5, 0}, //Pulse mechanic needs be discussed
+    "SELFDESTRUCT": {0.5, 0},
+    "SPEEDBOOST":   {1, 0},
+    "POISON":       {0.5, 2},
+    "LOCKPICK":     {1.5, 0},
+    "SHIELD":       {0.25, 0},
+    "DEPOSIT":      {0, 1},
 }
 
 type EnergyCost struct {
@@ -70,7 +69,6 @@ type Tile struct {
 type Bank struct {
     ID       int `json:"id"`
     Location Point `json:"location"`
-    //    X, Y             int
     DepositOccuring  bool `json:"deposit_occuring"`
     DepositAmount    int `json:"deposit_amount"`
     DepositOwner     int `json:"deposit_owner"`
@@ -81,7 +79,6 @@ type Bank struct {
 type Pad struct {
     ID       int `json:"id"`
     Location Point `json:"location"`
-    // X, Y       int
     Available bool `json:"available"`
     TicksLeft int `json:"ticks_left"`
 }
@@ -131,19 +128,17 @@ type EnemyBot struct {
 
 type VisibleAlgae struct {
     Location Point `json:"location"`
-    // X        int    `json:"x"`
-    // Y        int    `json:"y"`
     IsPoison string `json:"is_poison"`
 }
 
 type PermanentEntities struct {
     Banks      map[int]Bank `json:"banks"`
-    EnergyPads map[int]Pad  `json:"energypads"`
+    EnergyPads map[int]Pad  `json:"energypads"` // TODO: add _ between energy and pads
 }
 
 type PlayerMoves struct {
     Tick    int               `json:"tick"`
-    Spawns  map[int]SpawnCmd  `json:"spawn"`
+    Spawns  map[int]SpawnCmd  `json:"spawn"` // TODO: plural spawns
     Actions map[int]ActionCmd `json:"actions"`
 }
 
@@ -161,6 +156,14 @@ const (
     PlayerOne = iota
     PlayerTwo
 )
+
+// TODO: Later make use of this for GameStatus instead of Winner
+// const (
+// 		GameStatusOngoing = iota - 1
+// 		GameStatusP1Won
+// 		GameStatusP2Won
+// 		GameStatusDraw
+// )
 
 // Starts empty game engine instance
 func InitGameEngine(gl *GameLogger) *GameEngine {
@@ -186,7 +189,6 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
 }
 
 func (ge *GameEngine) initBanks() {
-
     ge.Banks[1] = initBank(1, 4, 4, 0)
     ge.Banks[2] = initBank(2, 14, 4, 1)
     ge.Banks[3] = initBank(3, 4, 14, 0)
@@ -223,8 +225,8 @@ func initPad(id int, x int, y int) *Pad {
 //overhead is negligible due to just 400 tiles. need to choose random tiles if the board size is increased
 
 func (ge *GameEngine) generateAlgae() {
-    for x := 0; x < 20; x++ {
-        for y := 0; y < 20; y++ {
+    for x := range 20 {
+        for y := range 20 {
             roll := rand.Float64()
             if roll < 0.15 {
                 ge.Grid[x][y].HasAlgae = true
