@@ -510,10 +510,10 @@ func (engine *GameEngine) getState(playerID int) PlayerView {
         Width:           BOARDWIDTH,
         Height:          BOARDHEIGHT,
         Bots:            playerBots,
-        VisibleEntities: engine.calculateVisibleEntities(playerID),
         PermanentEntities: PermanentEntities{
             Banks:      Banks,
             EnergyPads: Pads,
+            Algae:      engine.calculateVisibleEntitites(playerID),
         },
     }
 }
@@ -545,8 +545,8 @@ func (engine *GameEngine) getGameView() GameView {
         PermanentEntities: PermanentEntities{
             Banks:      Banks,
             EnergyPads: Pads,
+            Algae:      engine.getAlgaeMap(),
         },
-        AlgaeMap: engine.getAlgaeMap(),
     }
 }
 
@@ -574,7 +574,7 @@ func (engine *GameEngine) getAlgaeMap() []VisibleAlgae {
     return visibleAlgae
 }
 
-func (engine *GameEngine) calculateVisibleEntities(playerID int) VisibleEntities {
+func (engine *GameEngine) calculateVisibleEntities(playerID int) []VisibleAlgae {
     visibleEnemies := make([]EnemyBot, 0)
     visibleAlgae := make([]VisibleAlgae, 0)
 
@@ -645,10 +645,7 @@ func (engine *GameEngine) calculateVisibleEntities(playerID int) VisibleEntities
             }
         }
     }
-    return VisibleEntities{
-        Enemies: visibleEnemies,
-        Algae:   visibleAlgae,
-    }
+    return visibleAlgae
 }
 
 func manhattanDist(x1, y1, x2, y2 int) int {
