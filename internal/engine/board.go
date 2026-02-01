@@ -179,7 +179,7 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
     ge.initBanks()
     ge.initPads()
     ge.generateAlgae()
-    ge.gl.Log(GameLogState, "Game Map generated successfully\n")
+    ge.gl.Log(GameLogGameState, "Game Map generated successfully\n")
     return ge
 }
 
