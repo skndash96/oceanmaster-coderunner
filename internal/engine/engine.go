@@ -117,7 +117,6 @@ func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID int, botID int) bool
 	}
 }
 
-// BOT LOCATION IS MESSED UP. DIRECT USED SOMEWHERE POINT USED ELSEWHERE //fixed
 func (engine *GameEngine) actionBot(botID int, action ActionCmd) {
 	bot := engine.getBot(botID)
 	if bot == nil {
@@ -301,9 +300,12 @@ func (engine *GameEngine) validateMove(botID int, move ActionCmd) (bool, float64
 		}
 		energyCost += bot.TraversalCost
 	}
-	if !engine.hasAbility(botID, move.Action) {
-		return false, energyCost
+    if move.Action != "MOVE"{
+        if !engine.hasAbility(botID, move.Action) {
+            return false, energyCost
+        }
 	}
+
 	energyCost += EnergyDB[move.Action].Ability
 
 	if energyCost > bot.Energy {
@@ -364,7 +366,6 @@ func (engine *GameEngine) startDeposit(botID int) {
 	playerID := engine.currentPlayerID()
 	if isNearBank, bankID := engine.isNearBank(botID); isNearBank {
 		bank := engine.Banks[bankID]
-        fmt.Printf("PlayerID -> %d BankOwnerID -> %d", playerID, bank.BankOwner)
 		if bank.BankOwner == playerID && bank.DepositOccuring == false {
             fmt.Printf("Entered here")
 			bank.DepositOwner = playerID

@@ -149,8 +149,8 @@ type PlayerMoves struct {
 }
 
 type SpawnCmd struct {
-    Abilities []string `json:"template"`
-    Location  Point    `json:"loc"`
+    Abilities []string `json:"spawns"`
+    Location  Point    `json:"location"`
 }
 
 type ActionCmd struct {
