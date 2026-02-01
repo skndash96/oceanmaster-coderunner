@@ -23,8 +23,6 @@ const (
 )
 
 func (engine *GameEngine) UpdateState(move PlayerMoves) {
-	engine.Ticks++
-	engine.TickPermanentEntities()
 	playerID := engine.currentPlayerID()
 
 	for botID, spawnCmd := range move.Spawns {
@@ -34,6 +32,8 @@ func (engine *GameEngine) UpdateState(move PlayerMoves) {
 	for botID, actionCmd := range move.Actions {
 		engine.actionBot(botID, actionCmd)
 	}
+	engine.TickPermanentEntities()
+	engine.Ticks++
 }
 
 func (engine *GameEngine) TickPermanentEntities() {
