@@ -103,6 +103,7 @@ type GameView struct {
     Width             int               `json:"width"`
     Height            int               `json:"height"`
     PermanentEntities PermanentEntities `json:"permanent_entities"`
+    AlgaeMap          []VisibleAlgae    `json:"algae"`
 }
 
 type PlayerView struct {
@@ -114,6 +115,7 @@ type PlayerView struct {
     Width             int               `json:"width"`
     Height            int               `json:"height"`
     Bots              map[int]Bot       `json:"bots"`
+    VisibleEntities   VisibleEntities   `json:"visible_entities"`
     PermanentEntities PermanentEntities `json:"permanent_entities"`
 }
 
@@ -139,7 +141,6 @@ type VisibleAlgae struct {
 type PermanentEntities struct {
     Banks      map[int]Bank `json:"banks"`
     EnergyPads map[int]Pad  `json:"energy_pads"`
-    Algae      []VisibleAlgae `json:"algae"`
 }
 
 type PlayerMoves struct {
