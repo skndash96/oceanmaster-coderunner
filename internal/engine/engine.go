@@ -3,6 +3,7 @@ package engine
 import (
 	"math"
 	"slices"
+    "fmt"
 )
 
 const (
@@ -14,7 +15,7 @@ const (
 	SelfDestructRange = 1
 	BasePadCoolDown   = 50
 	BankDepositTime   = 100
-	BankDepositRange  = 2
+	BankDepositRange  = 4
 	ScoutRadius       = 4
 	MAXBOTS           = 50
 	BOARDWIDTH        = 20
@@ -83,7 +84,7 @@ func (engine *GameEngine) CheckWinCondition() int {
 }
 
 func (engine *GameEngine) currentPlayerID() int {
-	return engine.Ticks % 2
+	return (engine.Ticks+1) % 2 
 }
 
 func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID int, botID int) bool {
@@ -353,7 +354,9 @@ func (engine *GameEngine) startDeposit(botID int) {
 	playerID := engine.currentPlayerID()
 	if isNearBank, bankID := engine.isNearBank(botID); isNearBank {
 		bank := engine.Banks[bankID]
+        fmt.Printf("PlayerID -> %d BankOwnerID -> %d", playerID, bank.BankOwner)
 		if bank.BankOwner == playerID && bank.DepositOccuring == false {
+            fmt.Printf("Entered here")
 			bank.DepositOwner = playerID
 			bank.DepositTicksLeft = BankDepositTime
 			bank.DepositOccuring = true

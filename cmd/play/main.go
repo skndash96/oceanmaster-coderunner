@@ -103,6 +103,16 @@ func main() {
 				Action:    verb,
 			}
 			fmt.Println("Action queued.")
+        case "PASS":
+            num, _ := strconv.Atoi(parts[1])
+            for _ = range num{
+                pendingMoves.Tick = ge.Ticks+1
+                ge.UpdateState(pendingMoves)
+                pendingMoves = engine.PlayerMoves{
+                    Spawns:  make(map[int]engine.SpawnCmd),
+                    Actions: make(map[int]engine.ActionCmd),
+                }
+            }
 
 		default:
 			fmt.Println("Unknown command. Type HELP.")

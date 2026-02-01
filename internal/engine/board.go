@@ -217,7 +217,7 @@ func initPad(id int, x int, y int) *Pad {
         ID:        id,
         Location:  Point{x, y},
         Available: true,
-        TicksLeft: BasePadCoolDown,
+        TicksLeft: 0,
     }
 }
 
