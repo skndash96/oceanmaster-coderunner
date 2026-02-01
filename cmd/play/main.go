@@ -28,7 +28,7 @@ func main() {
 		// Calculate whose turn it is for the *pending* moves
 		// If Ticks=1, Next Update makes it 2 -> Player 0 moves.
 		// So pending moves are for Player (Ticks % 2).
-		playerID := (ge.Ticks + 1) % 2 + 1
+		playerID := (ge.Ticks + 1) % 2
 		fmt.Printf("\n--- TICK %d | PENDING: PLAYER %d ---\n", ge.Ticks, playerID)
 
 		printState(ge)

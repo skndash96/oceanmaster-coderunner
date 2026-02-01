@@ -158,11 +158,6 @@ type ActionCmd struct {
     Direction string `json:"direction"`
 }
 
-const (
-    PlayerOne = iota
-    PlayerTwo
-)
-
 // Starts empty game engine instance
 func InitGameEngine(gl *GameLogger) *GameEngine {
     ge := &GameEngine{

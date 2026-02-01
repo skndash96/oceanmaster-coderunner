@@ -190,14 +190,14 @@ func (engine *GameEngine) moveBot(botID int, direction string) {
 	if newLocation.X < 0 {
 		newLocation.X = 0
 	}
-	if newLocation.X > MAXWIDTH-1 {
-		newLocation.X = MAXWIDTH-1
+	if newLocation.X > BOARDWIDTH-1 {
+		newLocation.X = BOARDWIDTH-1
 	}
 	if newLocation.Y < 0 {
 		newLocation.Y = 0
 	}
-	if newLocation.Y > MAXHEIGHT-1 {
-		newLocation.Y = MAXHEIGHT-1
+	if newLocation.Y > BOARDHEIGHT-1 {
+		newLocation.Y = BOARDHEIGHT-1
 	}
 	bot.Location = newLocation
 	engine.energyPadCheck(botID)
