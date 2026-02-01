@@ -23,6 +23,12 @@ const (
 	MAXALGAEHELD      = 5
 )
 
+const (
+    PlayerOne = iota
+    PlayerTwo
+    Draw
+)
+
 func (engine *GameEngine) UpdateState(move PlayerMoves) {
 	playerID := engine.currentPlayerID()
 
@@ -62,21 +68,21 @@ func (engine *GameEngine) TickPermanentEntities() {
 }
 
 func (engine *GameEngine) CheckWinCondition() int {
-	if engine.PermanentAlgae[0] > engine.AlgaeCount/2 {
-		engine.Winner = 0
+	if engine.PermanentAlgae[PlayerOne] > engine.AlgaeCount/2 {
+		engine.Winner = PlayerOne
 	}
-	if engine.PermanentAlgae[1] > engine.AlgaeCount/2 {
-		engine.Winner = 1
+	if engine.PermanentAlgae[PlayerTwo] > engine.AlgaeCount/2 {
+		engine.Winner = PlayerTwo
 	}
 	if engine.Ticks == 1000 {
-		if engine.PermanentAlgae[0] > engine.PermanentAlgae[1] {
-			engine.Winner = 0
+		if engine.PermanentAlgae[PlayerOne] > engine.PermanentAlgae[PlayerTwo] {
+			engine.Winner = PlayerOne
 		}
-		if engine.PermanentAlgae[0] < engine.PermanentAlgae[1] {
-			engine.Winner = 1
+		if engine.PermanentAlgae[PlayerOne] < engine.PermanentAlgae[PlayerTwo] {
+			engine.Winner = PlayerTwo
 		}
-		if engine.PermanentAlgae[0] == engine.PermanentAlgae[1] {
-			engine.Winner = 2 //DRAW
+		if engine.PermanentAlgae[PlayerOne] == engine.PermanentAlgae[PlayerTwo] {
+			engine.Winner = Draw //DRAW
 		}
 	}
 	return engine.Winner
@@ -84,7 +90,11 @@ func (engine *GameEngine) CheckWinCondition() int {
 }
 
 func (engine *GameEngine) currentPlayerID() int {
-	return (engine.Ticks+1) % 2 
+	if (engine.Ticks+1) % 2 == PlayerOne {
+        return PlayerOne
+    } else {
+        return PlayerTwo
+    }
 }
 
 func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID int, botID int) bool {
@@ -180,14 +190,14 @@ func (engine *GameEngine) moveBot(botID int, direction string) {
 	if newLocation.X < 0 {
 		newLocation.X = 0
 	}
-	if newLocation.X > 19 {
-		newLocation.X = 19
+	if newLocation.X > MAXWIDTH-1 {
+		newLocation.X = MAXWIDTH-1
 	}
 	if newLocation.Y < 0 {
 		newLocation.Y = 0
 	}
-	if newLocation.Y > 19 {
-		newLocation.Y = 19
+	if newLocation.Y > MAXHEIGHT-1 {
+		newLocation.Y = MAXHEIGHT-1
 	}
 	bot.Location = newLocation
 	engine.energyPadCheck(botID)
@@ -374,7 +384,7 @@ func (engine *GameEngine) isNearBank(botID int) (bool, int) {
 			return true, bankID
 		}
 	}
-	return false, 0
+	return false, -1
 }
 
 func (engine *GameEngine) isOnEnergyPad(botID int) (bool, int) {
@@ -384,7 +394,7 @@ func (engine *GameEngine) isOnEnergyPad(botID int) (bool, int) {
 			return true, EnergyPadID
 		}
 	}
-	return false, 0
+	return false, -1
 }
 
 func (engine *GameEngine) isPoison(loc Point) bool {
@@ -462,8 +472,8 @@ func (engine *GameEngine) getGameView() GameView {
 	}
 	return GameView{
 		Tick:     engine.Ticks,
-		Scraps:   [2]int{engine.Scraps[0], engine.Scraps[1]},
-		Algae:    [2]int{engine.PermanentAlgae[0], engine.PermanentAlgae[1]},
+		Scraps:   [2]int{engine.Scraps[PlayerOne], engine.Scraps[PlayerTwo]},
+		Algae:    [2]int{engine.PermanentAlgae[PlayerOne], engine.PermanentAlgae[PlayerTwo]},
 		BotCount: len(engine.AllBots),
 		MaxBots:  MAXBOTS,
 		Width:    BOARDWIDTH,

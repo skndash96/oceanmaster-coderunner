@@ -177,8 +177,8 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
 
         gl: gl,
     }
-    ge.Scraps[0] = 100
-    ge.Scraps[1] = 100
+    ge.Scraps[PlayerOne] = 100
+    ge.Scraps[PlayerTwo] = 100
 
     ge.initBanks()
     ge.initPads()
@@ -188,10 +188,10 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
 
 func (ge *GameEngine) initBanks() {
 
-    ge.Banks[1] = initBank(1, 4, 4, 0)
-    ge.Banks[2] = initBank(2, 14, 4, 1)
-    ge.Banks[3] = initBank(3, 4, 14, 0)
-    ge.Banks[4] = initBank(4, 14, 14, 1)
+    ge.Banks[1] = initBank(1, 4, 4, PlayerOne)
+    ge.Banks[2] = initBank(2, 14, 4, PlayerTwo)
+    ge.Banks[3] = initBank(3, 4, 14, PlayerOne)
+    ge.Banks[4] = initBank(4, 14, 14, PlayerTwo)
 }
 
 // Need to update Bank structure to have ownership of Banks(can't deposit in enemy bank)
