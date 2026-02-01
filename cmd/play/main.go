@@ -117,6 +117,14 @@ func printState(ge *engine.GameEngine) {
 		ge.PermanentAlgae[0], ge.PermanentAlgae[1],
 		ge.AlgaeCount)
 
+    for bankID, bank := range ge.Banks {
+        fmt.Printf("Bank ID %d at %d %d -> DepositOccuring=%t | DepositTicksLeft=%d | DepositOwner=%d | Deposit Amount=%d\n",bankID, bank.Location.X, bank.Location.Y, bank.DepositOccuring, bank.DepositTicksLeft, bank.DepositOwner, bank.DepositAmount )
+    }
+
+    for padID, pad := range ge.EnergyPads {
+        fmt.Printf("EnergyPad ID %d at %d %d -> Available=%t | TicksLeft=%d\n", padID, pad.Location.X, pad.Location.Y, pad.Available, pad.TicksLeft)
+    }
+
 	// Print Bots
 	var bots []*engine.Bot
 	for _, b := range ge.AllBots {
@@ -134,6 +142,23 @@ func printState(ge *engine.GameEngine) {
 		fmt.Printf("  Bot %d [P%d] @ %v | Energy: %.1f | Scraps: %d | Held: %d | Abilities: %v\n",
 			bot.ID, bot.OwnerID, bot.Location, bot.Energy, bot.Scraps, bot.AlgaeHeld, bot.Abilities)
 	}
+
+    for y := range 20 {
+        for x := range 20 {
+            if ge.LocationOccupied(engine.Point{x, y}){
+                fmt.Printf("o ")
+            } else if ge.Grid[x][y].HasAlgae {
+                if ge.Grid[x][y].IsPoison {
+                    fmt.Printf("x ")
+                } else {
+                fmt.Printf("* ")
+                }
+            } else {
+                fmt.Printf(". ")
+            }
+        }
+        fmt.Printf("\n")
+    }
 }
 
 func printHelp() {

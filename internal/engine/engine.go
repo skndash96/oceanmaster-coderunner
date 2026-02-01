@@ -221,7 +221,7 @@ func (engine *GameEngine) selfDestructBot(botID int) {
 	bot := engine.getBot(botID)
 	for _, botB := range engine.AllBots {
 		if math.Abs(float64(bot.Location.X-botB.Location.X)) <= SelfDestructRange && math.Abs(float64(bot.Location.Y-botB.Location.Y)) <= SelfDestructRange {
-			if engine.hasAbility(botID, "SHIELD") {
+			if engine.hasAbility(botB.ID, "SHIELD") {
 				engine.removeShield(botB.ID)
 			} else {
 				engine.KillBot(botB.ID)
@@ -251,7 +251,7 @@ func (engine *GameEngine) validateSpawn(spawn SpawnCmd) (bool, int) {
 	scrapCost := 0
 	playerID := engine.currentPlayerID()
 
-	if engine.locationOccupied(spawn.Location) {
+	if engine.LocationOccupied(spawn.Location) {
 		return false, 0
 	}
 
@@ -266,7 +266,7 @@ func (engine *GameEngine) validateSpawn(spawn SpawnCmd) (bool, int) {
 
 }
 
-func (engine *GameEngine) locationOccupied(point Point) bool {
+func (engine *GameEngine) LocationOccupied(point Point) bool {
 	// TODO: What about other factors like banks ?
 	for _, bot := range engine.AllBots {
 		if point == bot.Location {
@@ -277,11 +277,15 @@ func (engine *GameEngine) locationOccupied(point Point) bool {
 }
 
 func (engine *GameEngine) validateMove(botID int, move ActionCmd) (bool, float64) {
+    playerID := engine.currentPlayerID()
 	bot := engine.getBot(botID)
 	energyCost := 0.0
+    if bot.OwnerID != playerID {
+        return false, energyCost
+    }
 
 	if move.Direction != "NULL" {
-		if engine.locationOccupied(incrementLocation(bot.Location, move.Direction)) {
+		if engine.LocationOccupied(incrementLocation(bot.Location, move.Direction)) {
 			return false, energyCost
 		}
 		energyCost += bot.TraversalCost

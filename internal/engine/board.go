@@ -55,6 +55,7 @@ var EnergyDB = map[string]EnergyCost{
     "LOCKPICK":     EnergyCost{1.5, 0},
     "SHIELD":       EnergyCost{0.25, 0},
     "DEPOSIT":      EnergyCost{0, 1},
+    "MOVE":         EnergyCost{0, 0},
 }
 
 type EnergyCost struct {
