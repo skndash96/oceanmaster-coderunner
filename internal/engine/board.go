@@ -138,12 +138,12 @@ type VisibleAlgae struct {
 
 type PermanentEntities struct {
     Banks      map[int]Bank `json:"banks"`
-    EnergyPads map[int]Pad  `json:"energypads"`
+    EnergyPads map[int]Pad  `json:"energy_pads"`
 }
 
 type PlayerMoves struct {
     Tick    int               `json:"tick"`
-    Spawns  map[int]SpawnCmd  `json:"spawn"`
+    Spawns  map[int]SpawnCmd  `json:"spawns"`
     Actions map[int]ActionCmd `json:"actions"`
 }
 
@@ -223,8 +223,8 @@ func initPad(id int, x int, y int) *Pad {
 //overhead is negligible due to just 400 tiles. need to choose random tiles if the board size is increased
 
 func (ge *GameEngine) generateAlgae() {
-    for x := 0; x < 20; x++ {
-        for y := 0; y < 20; y++ {
+    for x := range BOARDWIDTH {
+        for y := range BOARDHEIGHT {
             roll := rand.Float64()
             if roll < 0.15 {
                 ge.Grid[x][y].HasAlgae = true

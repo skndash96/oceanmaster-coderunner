@@ -1,6 +1,9 @@
 package engine
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 const (
 	TotalTicks        = 1000
@@ -20,9 +23,9 @@ const (
 )
 
 func (engine *GameEngine) UpdateState(move PlayerMoves) {
-    engine.Ticks++
-    engine.TickPermanentEntities()
-    playerID := engine.currentPlayerID()
+	engine.Ticks++
+	engine.TickPermanentEntities()
+	playerID := engine.currentPlayerID()
 
 	for botID, spawnCmd := range move.Spawns {
 		engine.spawnBot(spawnCmd, playerID, botID)
@@ -84,23 +87,23 @@ func (engine *GameEngine) currentPlayerID() int {
 }
 
 func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID int, botID int) bool {
-    if isValid, scrapCost := engine.validateSpawn(spawn); isValid {
-        bot := Bot{
-            ID:            botID,
-            OwnerID:       playerID,
-            Location:      spawn.Location,
-            Energy:        SpawnEnergy,
-            Scraps:        scrapCost,
-            Abilities:     spawn.Abilities,
-            VisionRadius:  VisionRadius,
-            TraversalCost: engine.calculateTraversalCost(spawn.Abilities),
-        }
-        engine.AllBots[bot.ID] = &bot
-        engine.Scraps[playerID] -= scrapCost
-        return true
-    } else {
-        return false
-    }
+	if isValid, scrapCost := engine.validateSpawn(spawn); isValid {
+		bot := Bot{
+			ID:            botID,
+			OwnerID:       playerID,
+			Location:      spawn.Location,
+			Energy:        SpawnEnergy,
+			Scraps:        scrapCost,
+			Abilities:     spawn.Abilities,
+			VisionRadius:  VisionRadius,
+			TraversalCost: engine.calculateTraversalCost(spawn.Abilities),
+		}
+		engine.AllBots[bot.ID] = &bot
+		engine.Scraps[playerID] -= scrapCost
+		return true
+	} else {
+		return false
+	}
 }
 
 // BOT LOCATION IS MESSED UP. DIRECT USED SOMEWHERE POINT USED ELSEWHERE //fixed
@@ -234,13 +237,14 @@ func (engine *GameEngine) KillBot(botID int) {
 
 func (engine *GameEngine) removeShield(botID int) {
 	bot := engine.getBot(botID)
-	for index, ability := range bot.Abilities {
-		if ability == "SHIELD" {
-			bot.Abilities = append(bot.Abilities[:index], bot.Abilities[index+1:]...)
-			break
+	newAbilities := make([]string, 0, len(bot.Abilities)-1)
+	for _, ability := range bot.Abilities {
+		if ability != "SHIELD" {
+			newAbilities = append(newAbilities, ability)
 		}
 	}
 	bot.TraversalCost -= EnergyDB["SHIELD"].Traversal
+	bot.Abilities = newAbilities
 }
 
 func (engine *GameEngine) validateSpawn(spawn SpawnCmd) (bool, int) {
@@ -264,12 +268,12 @@ func (engine *GameEngine) validateSpawn(spawn SpawnCmd) (bool, int) {
 
 func (engine *GameEngine) locationOccupied(point Point) bool {
 	// TODO: What about other factors like banks ?
-    for _, bot := range engine.AllBots {
-        if point == bot.Location {
-            return true
-        }
-    }
-    return false
+	for _, bot := range engine.AllBots {
+		if point == bot.Location {
+			return true
+		}
+	}
+	return false
 }
 
 func (engine *GameEngine) validateMove(botID int, move ActionCmd) (bool, float64) {
@@ -396,12 +400,7 @@ func (engine *GameEngine) hasAbility(botID int, targetAbility string) bool {
 	if targetAbility == "DEPOSIT" {
 		targetAbility = "HARVEST" //deposit automatically comes with harvest
 	}
-	for _, ability := range bot.Abilities {
-		if ability == targetAbility {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(bot.Abilities, targetAbility)
 }
 
 func (engine *GameEngine) getState(playerID int) PlayerView {
@@ -473,8 +472,8 @@ func (engine *GameEngine) getGameView() GameView {
 
 func (engine *GameEngine) getAlgaeMap() []VisibleAlgae {
 	visibleAlgae := make([]VisibleAlgae, 0)
-	for x := 0; x < BOARDWIDTH; x++ {
-		for y := 0; y < BOARDHEIGHT; y++ {
+	for x := range BOARDWIDTH {
+		for y := range BOARDHEIGHT {
 			tile := engine.Grid[x][y]
 			if tile.HasAlgae {
 				poisonStatus := ""
@@ -500,7 +499,7 @@ func (engine *GameEngine) calculateVisibleEntities(playerID int) VisibleEntities
 	visibleAlgae := make([]VisibleAlgae, 0)
 
 	//    canSee := [20][20]bool{}
-	canScout := [20][20]bool{}
+	canScout := [BOARDWIDTH][BOARDHEIGHT]bool{}
 	for _, bot := range engine.AllBots {
 		if bot.OwnerID == playerID {
 			isScout := false
@@ -510,9 +509,9 @@ func (engine *GameEngine) calculateVisibleEntities(playerID int) VisibleEntities
 					break
 				}
 				minX := max(0, bot.Location.X-VisionRadius) //discard out of bounds coordinate
-				maxX := min(19, bot.Location.X+VisionRadius)
+				maxX := min(BOARDWIDTH-1, bot.Location.X+VisionRadius)
 				minY := max(0, bot.Location.Y-VisionRadius)
-				maxY := min(19, bot.Location.Y+VisionRadius)
+				maxY := min(BOARDHEIGHT-1, bot.Location.Y+VisionRadius)
 
 				for x := minX; x <= maxX; x++ {
 					for y := minY; y <= maxY; y++ {
@@ -545,8 +544,8 @@ func (engine *GameEngine) calculateVisibleEntities(playerID int) VisibleEntities
 		}
 	}
 	//map of all algae in the region
-	for x := 0; x < 20; x++ {
-		for y := 0; y < 20; y++ {
+	for x := 0; x < BOARDWIDTH; x++ {
+		for y := 0; y < BOARDHEIGHT; y++ {
 			tile := engine.Grid[x][y]
 			if tile.HasAlgae /*&& canSee[x][y]*/ {
 				poisonStatus := "UNKNOWN"
