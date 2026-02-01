@@ -15,8 +15,7 @@ type GameEngine struct {
     PermanentAlgae [2]int
     Winner         int
     AlgaeCount     int
-
-    gl *GameLogger
+    gl              *GameLogger
 }
 
 // NEED TO FIX PLAYERID AS EITHER NUMBER OR STRING
@@ -32,6 +31,7 @@ type Bot struct {
     VisionRadius  int //Can be removed as vision is mapwide now
     AlgaeHeld     int
     TraversalCost float64
+    Status        string
 }
 
 // adding a constant movement cost to bot value. to not need to calculate it on every move
@@ -69,22 +69,23 @@ type Tile struct {
 }
 
 type Bank struct {
-    ID       int `json:"id"`
-    Location Point `json:"location"`
-    //    X, Y             int
-    DepositOccuring  bool `json:"deposit_occuring"`
-    DepositAmount    int `json:"deposit_amount"`
-    DepositOwner     int `json:"deposit_owner"`
-    BankOwner        int `json:"bank_owner"` //0 = player A, 1 = player B
-    DepositTicksLeft int `json:"deposit_ticks_left"`
+    ID                int   `json:"id"`
+    Location          Point `json:"location"`
+    DepositOccuring   bool  `json:"deposit_occuring"`
+    DepositAmount     int   `json:"deposit_amount"`
+    DepositOwner      int   `json:"deposit_owner"`
+    BankOwner         int   `json:"bank_owner"` //0 = player A, 1 = player B
+    DepositTicksLeft  int   `json:"deposit_ticks_left"`
+    LockPickOccuring  bool  `json:"lockpick_occuring"`
+    LockPickTicksLeft int   `json:"lockpick_ticks_left"`
+    LockPickBotID     int   `json:"lockpick_botid"`
 }
 
 type Pad struct {
-    ID       int `json:"id"`
-    Location Point `json:"location"`
-    // X, Y       int
-    Available bool `json:"available"`
-    TicksLeft int `json:"ticks_left"`
+    ID       int    `json:"id"`
+    Location Point  `json:"location"`
+    Available bool  `json:"available"`
+    TicksLeft int   `json:"ticks_left"`
 }
 
 type Point struct {
@@ -178,6 +179,7 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
     ge.initBanks()
     ge.initPads()
     ge.generateAlgae()
+    ge.gl.Log(GameLogState, "Game Map generated successfully\n")
     return ge
 }
 
