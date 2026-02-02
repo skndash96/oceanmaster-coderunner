@@ -15,6 +15,7 @@ type GameEngine struct {
     PermanentAlgae [2]int
     Winner         int
     AlgaeCount     int
+    Walls          []Point // Added again alongside grid for redundancy and speed
     gl              *GameLogger
 }
 
@@ -66,6 +67,7 @@ type EnergyCost struct {
 type Tile struct {
     HasAlgae bool
     IsPoison bool
+    IsWall   bool
 }
 
 type Bank struct {
@@ -141,6 +143,7 @@ type VisibleAlgae struct {
 type PermanentEntities struct {
     Banks      map[int]Bank `json:"banks"`
     EnergyPads map[int]Pad  `json:"energy_pads"`
+    Walls      []Point      `json:"walls"`
 }
 
 type PlayerMoves struct {
@@ -178,7 +181,7 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
 
     ge.initBanks()
     ge.initPads()
-    ge.generateAlgae()
+    ge.generateBoard()
     ge.gl.Log(GameLogGameState, "Game Map generated successfully\n")
     return ge
 }
@@ -186,9 +189,9 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
 func (ge *GameEngine) initBanks() {
 
     ge.Banks[1] = initBank(1, 4, 4, PlayerOne)
-    ge.Banks[2] = initBank(2, 14, 4, PlayerTwo)
-    ge.Banks[3] = initBank(3, 4, 14, PlayerOne)
-    ge.Banks[4] = initBank(4, 14, 14, PlayerTwo)
+    ge.Banks[2] = initBank(2, 15, 4, PlayerTwo)
+    ge.Banks[3] = initBank(3, 4, 15, PlayerOne)
+    ge.Banks[4] = initBank(4, 15, 15, PlayerTwo)
 }
 
 // Need to update Bank structure to have ownership of Banks(can't deposit in enemy bank)
@@ -205,8 +208,8 @@ func initBank(id int, x int, y int, playerID int) *Bank {
 }
 
 func (ge *GameEngine) initPads() {
-    ge.EnergyPads[0] = initPad(1, 9, 6)
-    ge.EnergyPads[1] = initPad(2, 9, 13)
+    ge.EnergyPads[0] = initPad(1, 9, 8)
+    ge.EnergyPads[1] = initPad(2, 10, 11)
 }
 
 func initPad(id int, x int, y int) *Pad {
@@ -220,11 +223,15 @@ func initPad(id int, x int, y int) *Pad {
 
 //overhead is negligible due to just 400 tiles. need to choose random tiles if the board size is increased
 
-func (ge *GameEngine) generateAlgae() {
+func (ge *GameEngine) generateBoard() {
     for x := range BOARDWIDTH {
         for y := range BOARDHEIGHT {
             roll := rand.Float64()
-            if roll < 0.15 {
+            if (((x == 6 || x == 13) && (y < 6 && y > 2 || y > 13 && y < 17)) || ((y == 6 || y == 13) && (x < 6 && x > 2 || x > 13 && x < 17))){
+                ge.Grid[x][y].IsWall = true
+                ge.Walls = append(ge.Walls, Point{x, y})
+                
+            } else if roll < 0.15 {
                 ge.Grid[x][y].HasAlgae = true
                 ge.AlgaeCount++
             } else if roll < 0.20 { //5% chance of poison

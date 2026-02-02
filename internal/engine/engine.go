@@ -112,7 +112,7 @@ func (engine *GameEngine) CheckWinCondition() int {
         }
         if engine.PermanentAlgae[PlayerOne] == engine.PermanentAlgae[PlayerTwo] {
             engine.gl.Log(GameLogGameState,"Game ended in draw\n")
-            engine.Winner = Draw //DRAW
+            engine.Winner = Draw
         }
     }
     return engine.Winner
@@ -348,6 +348,10 @@ func (engine *GameEngine) validateMove(botID int, move ActionCmd) (bool, float64
             engine.gl.Log(GameLogError, "botID=%d attempted to move at Occupied Location at (%d %d)\n", botID,point.X, point.Y)
             return false, energyCost
         }
+        if engine.isWall(point){
+            engine.gl.Log(GameLogError, "botID=%d attempted to move to a wall at (%d %d)\n", botID,point.X, point.Y)
+            return false, energyCost
+        }
         energyCost += bot.TraversalCost
     }
     if move.Action != "MOVE"{
@@ -433,6 +437,8 @@ func (engine *GameEngine) startDeposit(botID int) {
             bot.AlgaeHeld = 0
             bot.Energy -= EnergyDB["DEPOSIT"].Ability
             engine.gl.Log(GameLogError, "botID=%d attempted to deposit at bank already undergoing a deposit\n", botID)
+        } else {
+            engine.gl.Log(GameLogError, "botID=%d attempted to deposit at bank not owned by them\n", botID)
         }
     } else {
         engine.gl.Log(GameLogError, "botID=%d attempted to deposit too far from a bank\n", botID)
@@ -465,6 +471,10 @@ func (engine *GameEngine) isPoison(loc Point) bool {
 
 func (engine *GameEngine) isAlgae(loc Point) bool {
     return engine.Grid[loc.X][loc.Y].HasAlgae
+}
+
+func (engine *GameEngine) isWall(loc Point) bool {
+    return engine.Grid[loc.X][loc.Y].IsWall
 }
 
 func (engine *GameEngine) getBot(botID int) *Bot {
@@ -514,6 +524,7 @@ func (engine *GameEngine) getState(playerID int) PlayerView {
         PermanentEntities: PermanentEntities{
             Banks:      Banks,
             EnergyPads: Pads,
+            Walls:      engine.Walls,
         },
     }
 }
@@ -545,6 +556,7 @@ func (engine *GameEngine) getGameView() GameView {
         PermanentEntities: PermanentEntities{
             Banks:      Banks,
             EnergyPads: Pads,
+            Walls:      engine.Walls,
         },
         AlgaeMap: engine.getAlgaeMap(),
     }
