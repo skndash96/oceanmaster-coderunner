@@ -10,7 +10,8 @@ RUN make -j
 
 # Build python mount
 FROM python:3.12-slim AS jail
-RUN pip install --no-cache-dir numpy && \
+COPY oceanmaster-0.0.1-py3-none-any.whl /
+RUN pip install --no-cache-dir numpy /oceanmaster-0.0.1-py3-none-any.whl && \
     mkdir /submission && \
     touch /submission/main.py
 COPY wrapper.py /

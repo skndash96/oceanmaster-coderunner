@@ -13,9 +13,13 @@ services:
         limits:
           cpus: "2.0"
           memory: 2g
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
 
   rabbitmq:
-      image: rabbitmq:3.12-management #remove management for NO gui
+      image: rabbitmq:4.2.3-management #remove management for NO gui
       container_name: rabbitmq
       ports:
         - "5672:5672" #rmq
@@ -27,6 +31,11 @@ services:
       volumes:
         - rabbitmq-data:/var/lib/rabbitmq
       restart: unless-stopped
+      healthcheck:
+        test: rabbitmq-diagnostics check_running
+        interval: 10s
+        timeout: 10s
+        retries: 5
 
 volumes:
   rabbitmq-data:

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/delta/code-runner/internal/cgroup"
 	"github.com/delta/code-runner/internal/config"
 	"github.com/delta/code-runner/internal/nsjail/proto_nsjail"
 	"google.golang.org/protobuf/encoding/prototext"
