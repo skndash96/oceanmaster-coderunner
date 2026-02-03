@@ -155,7 +155,30 @@ func printState(ge *engine.GameEngine) {
 
     for y := range 20 {
         for x := range 20 {
-            if ge.LocationOccupied(engine.Point{x, y}){
+            isbank := false
+            ispad  := false
+            point := engine.Point{x,y}
+            for _, bank := range ge.Banks {
+                if bank.Location == point {
+                    fmt.Printf("B ")
+                    isbank = true
+                    break
+                } 
+            }
+            for _, pad := range ge.EnergyPads {
+                if pad.Location == point {
+                    fmt.Printf("E ")
+                    ispad = true
+                    break
+                }
+            }
+            if ispad{
+                continue
+            } else if isbank{
+                continue
+            } else if ge.Grid[x][y].IsWall{
+                fmt.Printf("W ")
+            } else if ge.LocationOccupied(engine.Point{x, y}){
                 fmt.Printf("o ")
             } else if ge.Grid[x][y].HasAlgae {
                 if ge.Grid[x][y].IsPoison {

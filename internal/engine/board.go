@@ -15,8 +15,8 @@ type GameEngine struct {
     PermanentAlgae [2]int
     Winner         int
     AlgaeCount     int
-
-    gl *GameLogger
+    Walls          []Point // Added again alongside grid for redundancy and speed
+    gl              *GameLogger
 }
 
 // NEED TO FIX PLAYERID AS EITHER NUMBER OR STRING
@@ -32,6 +32,7 @@ type Bot struct {
     VisionRadius  int //Can be removed as vision is mapwide now
     AlgaeHeld     int
     TraversalCost float64
+    Status        string
 }
 
 // adding a constant movement cost to bot value. to not need to calculate it on every move
@@ -66,25 +67,27 @@ type EnergyCost struct {
 type Tile struct {
     HasAlgae bool
     IsPoison bool
+    IsWall   bool
 }
 
 type Bank struct {
-    ID       int `json:"id"`
-    Location Point `json:"location"`
-    //    X, Y             int
-    DepositOccuring  bool `json:"deposit_occuring"`
-    DepositAmount    int `json:"deposit_amount"`
-    DepositOwner     int `json:"deposit_owner"`
-    BankOwner        int `json:"bank_owner"` //0 = player A, 1 = player B
-    DepositTicksLeft int `json:"deposit_ticks_left"`
+    ID                int   `json:"id"`
+    Location          Point `json:"location"`
+    DepositOccuring   bool  `json:"deposit_occuring"`
+    DepositAmount     int   `json:"deposit_amount"`
+    DepositOwner      int   `json:"deposit_owner"`
+    BankOwner         int   `json:"bank_owner"` //0 = player A, 1 = player B
+    DepositTicksLeft  int   `json:"deposit_ticks_left"`
+    LockPickOccuring  bool  `json:"lockpick_occuring"`
+    LockPickTicksLeft int   `json:"lockpick_ticks_left"`
+    LockPickBotID     int   `json:"lockpick_botid"`
 }
 
 type Pad struct {
-    ID       int `json:"id"`
-    Location Point `json:"location"`
-    // X, Y       int
-    Available bool `json:"available"`
-    TicksLeft int `json:"ticks_left"`
+    ID       int    `json:"id"`
+    Location Point  `json:"location"`
+    Available bool  `json:"available"`
+    TicksLeft int   `json:"ticks_left"`
 }
 
 type Point struct {
@@ -140,6 +143,7 @@ type VisibleAlgae struct {
 type PermanentEntities struct {
     Banks      map[int]Bank `json:"banks"`
     EnergyPads map[int]Pad  `json:"energy_pads"`
+    Walls      []Point      `json:"walls"`
 }
 
 type PlayerMoves struct {
@@ -149,8 +153,8 @@ type PlayerMoves struct {
 }
 
 type SpawnCmd struct {
-    Abilities []string `json:"template"`
-    Location  Point    `json:"loc"`
+    Abilities []string `json:"spawns"`
+    Location  Point    `json:"location"`
 }
 
 type ActionCmd struct {
@@ -177,16 +181,17 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
 
     ge.initBanks()
     ge.initPads()
-    ge.generateAlgae()
+    ge.generateBoard()
+    ge.gl.Log(GameLogGameState, "Game Map generated successfully\n")
     return ge
 }
 
 func (ge *GameEngine) initBanks() {
 
     ge.Banks[1] = initBank(1, 4, 4, PlayerOne)
-    ge.Banks[2] = initBank(2, 14, 4, PlayerTwo)
-    ge.Banks[3] = initBank(3, 4, 14, PlayerOne)
-    ge.Banks[4] = initBank(4, 14, 14, PlayerTwo)
+    ge.Banks[2] = initBank(2, 15, 4, PlayerTwo)
+    ge.Banks[3] = initBank(3, 4, 15, PlayerOne)
+    ge.Banks[4] = initBank(4, 15, 15, PlayerTwo)
 }
 
 // Need to update Bank structure to have ownership of Banks(can't deposit in enemy bank)
@@ -203,8 +208,8 @@ func initBank(id int, x int, y int, playerID int) *Bank {
 }
 
 func (ge *GameEngine) initPads() {
-    ge.EnergyPads[0] = initPad(1, 9, 6)
-    ge.EnergyPads[1] = initPad(2, 9, 13)
+    ge.EnergyPads[0] = initPad(1, 9, 8)
+    ge.EnergyPads[1] = initPad(2, 10, 11)
 }
 
 func initPad(id int, x int, y int) *Pad {
@@ -218,11 +223,15 @@ func initPad(id int, x int, y int) *Pad {
 
 //overhead is negligible due to just 400 tiles. need to choose random tiles if the board size is increased
 
-func (ge *GameEngine) generateAlgae() {
+func (ge *GameEngine) generateBoard() {
     for x := range BOARDWIDTH {
         for y := range BOARDHEIGHT {
             roll := rand.Float64()
-            if roll < 0.15 {
+            if (((x == 6 || x == 13) && (y < 6 && y > 2 || y > 13 && y < 17)) || ((y == 6 || y == 13) && (x < 6 && x > 2 || x > 13 && x < 17))){
+                ge.Grid[x][y].IsWall = true
+                ge.Walls = append(ge.Walls, Point{x, y})
+                
+            } else if roll < 0.15 {
                 ge.Grid[x][y].HasAlgae = true
                 ge.AlgaeCount++
             } else if roll < 0.20 { //5% chance of poison
