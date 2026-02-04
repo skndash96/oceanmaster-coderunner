@@ -85,10 +85,10 @@ func (m *Match) Simulate(cfg *config.Config) error {
 		var turnErr error
 
 		if isP1Turn {
-			turnErr = doTurn(turnCtx, s1, m.gl, "p1", ge.getState(PlayerOne), &move)
+			turnErr = doTurn(turnCtx, s1, m.gl, "p1", ge.GetPlayerView(PlayerOne), &move)
 			m.gl.Log(GameLogDebug, "Completed Turn")
 		} else {
-			turnErr = doTurn(turnCtx, s2, m.gl, "p2", ge.getState(PlayerTwo), &move)
+			turnErr = doTurn(turnCtx, s2, m.gl, "p2", ge.GetPlayerView(PlayerTwo), &move)
 			m.gl.Log(GameLogDebug, "Completed Turn")
 		}
 
@@ -138,7 +138,7 @@ func handshakeSandbox(mCtx context.Context, s *sandbox.Sandbox, timeoutMS uint32
 	return nil
 }
 
-func doTurn(turnCtx context.Context, s *sandbox.Sandbox, gl *GameLogger, label string, playerView PlayerView, out *PlayerMoves) error {
+func doTurn(turnCtx context.Context, s *sandbox.Sandbox, gl *GameLogger, label string, playerView PlayerViewDTO, out *PlayerMoves) error {
 	gl.Log(GameLogDebug, label, "Sending state")
 
 	if err := s.Send(playerView); err != nil {

@@ -20,6 +20,14 @@ _STATE = _WrapperState()
 
 def play(api: GameAPI):
     tick = api.get_tick()
+
+    # linearize tick for the user algo
+    # because user algo might do `if tick % 10 then spawn bot`
+    if tick % 2 == 1:
+        api.view.tick = tick//2 + 1
+    else:
+        api.view.tick = tick//2
+
     spawns: dict[str, dict] = {}
     actions: dict[str, dict] = {}
 
@@ -77,12 +85,6 @@ def play(api: GameAPI):
 
         if action is not None:
             actions[str(bot.id)] = action.to_dict()
-
-    # ---- CLEANUP PHASE ----
-    # i dont think we have to clean??
-    # for bot_id in list(_STATE.bot_strategies.keys()):
-    #     if bot_id not in alive_ids:
-    #         del _STATE.bot_strategies[bot_id]
 
     return {
         "tick": tick,

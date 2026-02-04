@@ -21,8 +21,6 @@ type GameEngine struct {
 	gl             *GameLogger
 }
 
-// NEED TO FIX PLAYERID AS EITHER NUMBER OR STRING
-// NEED TO FIX THE USE OF X AND Y SOMEWHERE AND Point ELSEWHERE
 type Bot struct {
 	ID            int      `json:"id"`
 	OwnerID       int      `json:"owner_id"` // 0 = Player A, 1 = Player B
@@ -35,8 +33,6 @@ type Bot struct {
 	TraversalCost float64  `json:"traversal_cost"`
 	Status        string   `json:"status"`
 }
-
-// adding a constant movement cost to bot value. to not need to calculate it on every move
 
 var CostDB = map[string]int{
 	"HARVEST":      10,
@@ -96,79 +92,20 @@ type Point struct {
 	Y int `json:"y"`
 }
 
-type GameView struct {
-	Tick              int               `json:"tick"`
-	Scraps            [2]int            `json:"scraps"`
-	AllBots           map[int]Bot       `json:"bots"`
-	Algae             [2]int            `json:"algae_count"`
-	BotCount          int               `json:"bot_count"`
-	MaxBots           int               `json:"max_bots"`
-	Width             int               `json:"width"`
-	Height            int               `json:"height"`
-	PermanentEntities PermanentEntities `json:"permanent_entities"`
-	AlgaeMap          []VisibleAlgae    `json:"algae"`
-}
-
-type PlayerView struct {
-	Tick              int               `json:"tick"`   //json tag
-	BotIDSeed         int		            `json:"bot_id_seed"`
-	Scraps            int               `json:"scraps"` //e.g value of Scraps variable will be set to value of scraps in json
-	Algae             int               `json:"algae"`
-	MaxBots           int               `json:"max_bots"`
-	Width             int               `json:"width"`
-	Height            int               `json:"height"`
-	Bots              map[int]Bot       `json:"bots"` // THINK: this only refers to the bots player's bots right?
-	VisibleEntities   VisibleEntities   `json:"visible_entities"`
-	PermanentEntities PermanentEntities `json:"permanent_entities"`
-}
-
-type VisibleEntities struct {
-	Enemies []EnemyBot     `json:"enemies"`
-	Algae   []VisibleAlgae `json:"algae"`
-}
-
-type EnemyBot struct {
-	ID        int      `json:"id"`
-	Location  Point    `json:"location"`
-	Scraps    int      `json:"scraps"`
-	Abilities []string `json:"abilities"`
-}
-
-type VisibleAlgae struct {
-	Location Point `json:"location"`
-	IsPoison string `json:"is_poison"`
-}
-
 type PermanentEntities struct {
 	Banks      map[int]Bank `json:"banks"`
 	EnergyPads map[int]Pad  `json:"energy_pads"`
 	Walls      []Point      `json:"walls"`
 }
 
-type PlayerMoves struct {
-	Tick    int               `json:"tick"`
-	Spawns  map[int]SpawnCmd  `json:"spawns"`
-	Actions map[int]ActionCmd `json:"actions"`
-}
-
-type SpawnCmd struct {
-	Abilities []string `json:"abilities"`
-	Location  Point    `json:"location"`
-}
-
-type ActionCmd struct {
-	Action    string `json:"action"`
-	Direction string `json:"direction"`
-}
-
 // Starts empty game engine instance
 func InitGameEngine(gl *GameLogger) *GameEngine {
 	ge := &GameEngine{
-		Ticks:  1,
-		BotIDSeed: [2]int{100,200},
-		MaxBots: 50,
-		Grid:   [20][20]Tile{},
-		Scraps: [2]int{},
+		Ticks:     1,
+		BotIDSeed: [2]int{100, 200},
+		MaxBots:   50,
+		Grid:      [20][20]Tile{},
+		Scraps:    [2]int{},
 
 		AllBots:    make(map[int]*Bot),
 		Banks:      make(map[int]*Bank),
@@ -187,7 +124,6 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
 }
 
 func (ge *GameEngine) initBanks() {
-
 	ge.Banks[1] = initBank(1, 4, 4, PlayerOne)
 	ge.Banks[2] = initBank(2, 15, 4, PlayerTwo)
 	ge.Banks[3] = initBank(3, 4, 15, PlayerOne)

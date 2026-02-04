@@ -34,7 +34,7 @@ func (engine *GameEngine) UpdateState(move PlayerMoves) {
 
     for botID, spawnCmd := range move.Spawns {
     		// TODO: critical, check botID <= engine.BotIDSeed[playerID] + engine.MaxBots[playerID]
-      	if playerID == 1 {
+      	if playerID == PlayerTwo {
        			// correct?
        			spawnCmd.Location.X = 19
        	}
@@ -42,7 +42,7 @@ func (engine *GameEngine) UpdateState(move PlayerMoves) {
     }
 
     for botID, actionCmd := range move.Actions {
-    		if playerID == 1 {
+    		if playerID == PlayerTwo {
 						if actionCmd.Direction == "NORTH" {
 							actionCmd.Direction = "SOUTH"
 						} else if actionCmd.Direction == "SOUTH" {
@@ -513,176 +513,6 @@ func (engine *GameEngine) hasAbility(botID int, targetAbility string) bool {
         targetAbility = "HARVEST" //deposit automatically comes with harvest
     }
     return slices.Contains(bot.Abilities, targetAbility)
-}
-
-func (engine *GameEngine) getState(playerID int) PlayerView {
-    playerBots := make(map[int]Bot, 0)
-    for _, bot := range engine.AllBots {
-        if bot.OwnerID == playerID {
-            playerBots[bot.ID] = *bot
-        }
-    }
-
-    Banks := make(map[int]Bank, 0)
-    for _, bank := range engine.Banks {
-        Banks[bank.ID] = *bank
-    }
-
-    Pads := make(map[int]Pad, 0)
-    for _, pad := range engine.EnergyPads {
-        Pads[pad.ID] = *pad
-    }
-
-    return PlayerView{
-        Tick:            engine.Ticks,
-        Scraps:          engine.Scraps[playerID],
-        Algae:           engine.PermanentAlgae[playerID],
-        BotIDSeed:       engine.BotIDSeed[playerID],
-        MaxBots:         engine.MaxBots,
-        Width:           BOARDWIDTH,
-        Height:          BOARDHEIGHT,
-        Bots:            playerBots,
-        VisibleEntities: engine.calculateVisibleEntities(playerID),
-        PermanentEntities: PermanentEntities{
-            Banks:      Banks,
-            EnergyPads: Pads,
-            Walls:      engine.Walls,
-        },
-    }
-}
-
-func (engine *GameEngine) getGameView() GameView {
-    allBots := make(map[int]Bot, 0)
-    for _, bot := range engine.AllBots {
-        allBots[bot.ID] = *bot
-    }
-
-    Banks := make(map[int]Bank, 0)
-    for _, bank := range engine.Banks {
-        Banks[bank.ID] = *bank
-    }
-
-    Pads := make(map[int]Pad, 0)
-    for _, pad := range engine.EnergyPads {
-        Pads[pad.ID] = *pad
-    }
-    return GameView{
-        Tick:     engine.Ticks,
-        Scraps:   [2]int{engine.Scraps[PlayerOne], engine.Scraps[PlayerTwo]},
-        Algae:    [2]int{engine.PermanentAlgae[PlayerOne], engine.PermanentAlgae[PlayerTwo]},
-        BotCount: len(engine.AllBots),
-        MaxBots:  engine.MaxBots,
-        Width:    BOARDWIDTH,
-        Height:   BOARDHEIGHT,
-        AllBots:  allBots,
-        PermanentEntities: PermanentEntities{
-            Banks:      Banks,
-            EnergyPads: Pads,
-            Walls:      engine.Walls,
-        },
-        AlgaeMap: engine.getAlgaeMap(),
-    }
-}
-
-func (engine *GameEngine) getAlgaeMap() []VisibleAlgae {
-    visibleAlgae := make([]VisibleAlgae, 0)
-    for x := range BOARDWIDTH {
-        for y := range BOARDHEIGHT {
-            tile := engine.Grid[x][y]
-            if tile.HasAlgae {
-                poisonStatus := ""
-                if tile.IsPoison {
-                    poisonStatus = "TRUE"
-                } else {
-                    poisonStatus = "FALSE"
-                }
-
-                algae := VisibleAlgae{
-                    Location: Point{x, y},
-                    IsPoison: poisonStatus,
-                }
-                visibleAlgae = append(visibleAlgae, algae)
-            }
-        }
-    }
-    return visibleAlgae
-}
-
-func (engine *GameEngine) calculateVisibleEntities(playerID int) VisibleEntities {
-    visibleEnemies := make([]EnemyBot, 0)
-    visibleAlgae := make([]VisibleAlgae, 0)
-
-    //    canSee := [20][20]bool{}
-    canScout := [BOARDWIDTH][BOARDHEIGHT]bool{}
-    for _, bot := range engine.AllBots {
-        if bot.OwnerID == playerID {
-            isScout := false
-            for _, ability := range bot.Abilities {
-                if ability == "SCOUT" {
-                    isScout = true
-                    break
-                }
-                minX := max(0, bot.Location.X-VisionRadius) //discard out of bounds coordinate
-                maxX := min(BOARDWIDTH-1, bot.Location.X+VisionRadius)
-                minY := max(0, bot.Location.Y-VisionRadius)
-                maxY := min(BOARDHEIGHT-1, bot.Location.Y+VisionRadius)
-
-                for x := minX; x <= maxX; x++ {
-                    for y := minY; y <= maxY; y++ {
-                        dist := manhattanDist(bot.Location.X, bot.Location.Y, x, y)
-
-                        // if dist <= VisionRadius {
-                        // canSee[x][y] = true // NO MORE VISION
-
-                        if isScout && dist <= ScoutRadius { //whats scout radis?
-                            canScout[x][y] = true
-                        }
-                        //}
-                    }
-                }
-            }
-        }
-    }
-    //calculate all enemies in visible region
-    for _, otherBot := range engine.AllBots {
-        if otherBot.OwnerID != playerID {
-            //            if canSee[otherBot.Location.X][otherBot.Location.Y] { //Give full vision to everyone
-            enemy := EnemyBot{
-                ID:        otherBot.ID,
-                Location:  Point{X: otherBot.Location.X, Y: otherBot.Location.Y},
-                Scraps:    otherBot.Scraps,
-                Abilities: otherBot.Abilities,
-            }
-            visibleEnemies = append(visibleEnemies, enemy)
-            //            }
-        }
-    }
-    //map of all algae in the region
-    for x := 0; x < BOARDWIDTH; x++ {
-        for y := 0; y < BOARDHEIGHT; y++ {
-            tile := engine.Grid[x][y]
-            if tile.HasAlgae /*&& canSee[x][y]*/ {
-                poisonStatus := "UNKNOWN"
-
-                if canScout[x][y] {
-                    if tile.IsPoison {
-                        poisonStatus = "TRUE"
-                    } else {
-                        poisonStatus = "FALSE"
-                    }
-                }
-                algae := VisibleAlgae{
-                    Location: Point{x, y},
-                    IsPoison: poisonStatus,
-                }
-                visibleAlgae = append(visibleAlgae, algae)
-            }
-        }
-    }
-    return VisibleEntities{
-        Enemies: visibleEnemies,
-        Algae:   visibleAlgae,
-    }
 }
 
 func manhattanDist(x1, y1, x2, y2 int) int {
