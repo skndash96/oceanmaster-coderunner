@@ -50,7 +50,7 @@ func WriteConfig(c *config.Config, cg cgroup.Cgroup) (*proto_nsjail.NsJailConfig
 		Path: proto.String("/bin/sh"),
 		Arg: []string{
 			"-c",
-			"echo testerr >&2 && exec /usr/local/bin/python3 wrapper.py",
+			"exec /usr/local/bin/python3 wrapper.py",
 		},
 	}
 

@@ -157,13 +157,13 @@ func printState(ge *engine.GameEngine) {
         for x := range 20 {
             isbank := false
             ispad  := false
-            point := engine.Point{x,y}
+            point := engine.Point{X:x,Y:y}
             for _, bank := range ge.Banks {
                 if bank.Location == point {
                     fmt.Printf("B ")
                     isbank = true
                     break
-                } 
+                }
             }
             for _, pad := range ge.EnergyPads {
                 if pad.Location == point {
@@ -178,7 +178,7 @@ func printState(ge *engine.GameEngine) {
                 continue
             } else if ge.Grid[x][y].IsWall{
                 fmt.Printf("W ")
-            } else if ge.LocationOccupied(engine.Point{x, y}){
+            } else if ge.LocationOccupied(engine.Point{X:x, Y:y}){
                 fmt.Printf("o ")
             } else if ge.Grid[x][y].HasAlgae {
                 if ge.Grid[x][y].IsPoison {

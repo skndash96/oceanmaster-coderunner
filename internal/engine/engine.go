@@ -31,7 +31,6 @@ const (
 )
 
 func (engine *GameEngine) UpdateState(move PlayerMoves) {
-    engine.gl.Log(GameLogGameState, "Tick No. %d\n", engine.Ticks)
     playerID := engine.currentPlayerID()
 
     for botID, spawnCmd := range move.Spawns {
@@ -42,6 +41,7 @@ func (engine *GameEngine) UpdateState(move PlayerMoves) {
         engine.actionBot(botID, actionCmd)
     }
     engine.TickPermanentEntities()
+    engine.CheckWinCondition()
     engine.Ticks++
 }
 
@@ -50,7 +50,7 @@ func (engine *GameEngine) TickPermanentEntities() {
         if bank.LockPickOccuring {
             if bank.LockPickTicksLeft == 0 {
                 bot := engine.getBot(bank.LockPickBotID)
-                engine.gl.Log(GameLogGameAction,"Deposit at bankID= %d has been stolen\n", bank.ID)
+                engine.gl.Log(GameLogDebug, fmt.Sprintf("Deposit at bankID= %d has been stolen", bank.ID))
                 bank.DepositOwner = bot.OwnerID
                 bank.LockPickOccuring = false
                 bank.LockPickBotID = -1
@@ -59,7 +59,7 @@ func (engine *GameEngine) TickPermanentEntities() {
                 if isNearBank, _ := engine.isNearBank(bank.LockPickBotID); isNearBank{
                     bank.LockPickTicksLeft--
                 } else {
-                    engine.gl.Log(GameLogGameAction,"LockPick at bankID=%d has been stopped\n", bank.ID)
+                    engine.gl.Log(GameLogDebug, fmt.Sprintf("LockPick at bankID=%d has been stopped", bank.ID))
                     bank.LockPickTicksLeft = 0
                     bank.LockPickOccuring = false
                     bank.LockPickBotID = -1
@@ -69,7 +69,7 @@ func (engine *GameEngine) TickPermanentEntities() {
         if bank.DepositOccuring {
             if bank.DepositTicksLeft == 0 {
                 engine.PermanentAlgae[bank.DepositOwner] += bank.DepositAmount
-                engine.gl.Log(GameLogGameAction,"%d Deposited to Player %d at Bank %d\n", bank.DepositAmount, bank.DepositOwner, bank.ID)
+                engine.gl.Log(GameLogDebug, fmt.Sprintf("%d Deposited to Player %d at Bank %d", bank.DepositAmount, bank.DepositOwner, bank.ID))
                 bank.DepositAmount = 0
                 bank.DepositOccuring = false
                 bank.DepositOwner = -1
@@ -82,7 +82,7 @@ func (engine *GameEngine) TickPermanentEntities() {
     for _, EnergyPad := range engine.EnergyPads {
         if EnergyPad.TicksLeft > 0 {
             if EnergyPad.TicksLeft == 1 {
-            engine.gl.Log(GameLogGameState , "Energy Pad %d replenished\n")
+            		engine.gl.Log(GameLogDebug, fmt.Sprintf("Energy Pad %d replenished", EnergyPad.ID))
             }
             EnergyPad.TicksLeft--
         }
@@ -94,24 +94,24 @@ func (engine *GameEngine) TickPermanentEntities() {
 
 func (engine *GameEngine) CheckWinCondition() int {
     if engine.PermanentAlgae[PlayerOne] > engine.AlgaeCount/2 {
-        engine.gl.Log(GameLogGameState,"Player one has won\n")
+        engine.gl.Log(GameLogDebug,"Player one has won")
         engine.Winner = PlayerOne
     }
     if engine.PermanentAlgae[PlayerTwo] > engine.AlgaeCount/2 {
-        engine.gl.Log(GameLogGameState,"Player two has won\n")
+        engine.gl.Log(GameLogDebug,"Player two has won")
         engine.Winner = PlayerTwo
     }
-    if engine.Ticks == 1000 {
+    if engine.Ticks >= 1000 {
         if engine.PermanentAlgae[PlayerOne] > engine.PermanentAlgae[PlayerTwo] {
-            engine.gl.Log(GameLogGameState,"Player one has won\n")
+            engine.gl.Log(GameLogDebug,"Player one has won")
             engine.Winner = PlayerOne
         }
         if engine.PermanentAlgae[PlayerOne] < engine.PermanentAlgae[PlayerTwo] {
-            engine.gl.Log(GameLogGameState,"Player two has won\n")
+            engine.gl.Log(GameLogDebug,"Player two has won")
             engine.Winner = PlayerTwo
         }
         if engine.PermanentAlgae[PlayerOne] == engine.PermanentAlgae[PlayerTwo] {
-            engine.gl.Log(GameLogGameState,"Game ended in draw\n")
+            engine.gl.Log(GameLogDebug,"Game ended in draw")
             engine.Winner = Draw
         }
     }
@@ -142,7 +142,7 @@ func (engine *GameEngine) spawnBot(spawn SpawnCmd, playerID int, botID int) bool
         engine.Scraps[playerID] -= scrapCost
         return true
     } else {
-        engine.gl.Log(GameLogError, "Failed to spawn BotID=%d\n", botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("Cannot to spawn BotID=%d", botID))
         return false
     }
 }
@@ -172,7 +172,7 @@ func (engine *GameEngine) actionBot(botID int, action ActionCmd) {
             engine.startDeposit(botID)
         }
     } else {
-        engine.gl.Log(GameLogError, "Failed to perform action for BotID=%d\n", botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("Cannot to perform action for BotID=%d", botID))
     }
 }
 
@@ -218,21 +218,25 @@ func (engine *GameEngine) moveBot(botID int, direction string) {
             newLocation.X--
         }
     }
+    isOutOfBounds := false
     if newLocation.X < 0 {
-        engine.gl.Log(GameLogError, "Attempted to move out of bounds\n", botID)
+        isOutOfBounds = true
         newLocation.X = 0
     }
     if newLocation.X > BOARDWIDTH-1 {
-        engine.gl.Log(GameLogError, "Attempted to move out of bounds\n", botID)
+        isOutOfBounds = true
         newLocation.X = BOARDWIDTH-1
     }
     if newLocation.Y < 0 {
-        engine.gl.Log(GameLogError, "Attempted to move out of bounds\n", botID)
+        isOutOfBounds = true
         newLocation.Y = 0
     }
     if newLocation.Y > BOARDHEIGHT-1 {
-        engine.gl.Log(GameLogError, "Attempted to move out of bounds\n", botID)
+        isOutOfBounds = true
         newLocation.Y = BOARDHEIGHT-1
+    }
+    if isOutOfBounds {
+        engine.gl.Log(GameLogWarn, "Attempted to move out of bounds", botID)
     }
     bot.Location = newLocation
     engine.energyPadCheck(botID)
@@ -298,12 +302,12 @@ func (engine *GameEngine) validateSpawn(spawn SpawnCmd, botID int) (bool, int) {
     playerID := engine.currentPlayerID()
     bot := engine.getBot(botID)
     if bot != nil {
-        engine.gl.Log(GameLogError, "BotID=%d already exists\n", botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("BotID=%d already exists", botID))
         return false, scrapCost
     }
 
     if engine.LocationOccupied(spawn.Location) {
-        engine.gl.Log(GameLogError, "BotID=%d attempted spawn at occupied location\n", botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("BotID=%d attempted spawn at occupied location", botID))
         return false, scrapCost
     }
 
@@ -312,7 +316,7 @@ func (engine *GameEngine) validateSpawn(spawn SpawnCmd, botID int) (bool, int) {
     }
 
     if scrapCost > engine.Scraps[playerID] {
-        engine.gl.Log(GameLogError, "BotID=%d does not have enough scraps to spawn\n", botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("BotID=%d does not have enough scraps to spawn", botID))
         return false, scrapCost
     }
     return true, scrapCost
@@ -334,29 +338,29 @@ func (engine *GameEngine) validateMove(botID int, move ActionCmd) (bool, float64
     bot := engine.getBot(botID)
     energyCost := 0.0
     if bot == nil {
-        engine.gl.Log(GameLogError, "Invalid BotID %d\n", botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("Invalid BotID %d", botID))
         return false, energyCost
     }
     if bot.OwnerID != playerID {
-        engine.gl.Log(GameLogError, "Player %d attempted to control invalid Bot %d\n", playerID, botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("Player %d attempted to control invalid Bot %d", playerID, botID))
         return false, energyCost
     }
 
     if move.Direction != "NULL" {
         point := incrementLocation(bot.Location, move.Direction)
         if engine.LocationOccupied(point) {
-            engine.gl.Log(GameLogError, "botID=%d attempted to move at Occupied Location at (%d %d)\n", botID,point.X, point.Y)
+            engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to move at Occupied Location at (%d %d)", botID, point.X, point.Y))
             return false, energyCost
         }
         if engine.isWall(point){
-            engine.gl.Log(GameLogError, "botID=%d attempted to move to a wall at (%d %d)\n", botID,point.X, point.Y)
+            engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to move to a wall at (%d %d)", botID, point.X, point.Y))
             return false, energyCost
         }
         energyCost += bot.TraversalCost
     }
     if move.Action != "MOVE"{
         if !engine.hasAbility(botID, move.Action) {
-            engine.gl.Log(GameLogError, "botID=%d does not have ability=%s\n",botID, move.Action)
+            engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d does not have ability=%s", botID, move.Action))
             return false, energyCost
         }
     }
@@ -364,7 +368,7 @@ func (engine *GameEngine) validateMove(botID int, move ActionCmd) (bool, float64
     energyCost += EnergyDB[move.Action].Ability
 
     if energyCost > bot.Energy {
-        engine.gl.Log(GameLogError, "botID=%d does not have enough energy for ability=%s\n", botID, move.Action)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d does not have enough energy for ability=%s", botID, move.Action))
         return false, energyCost
     }
 
@@ -387,7 +391,7 @@ func (engine *GameEngine) harvestAlgae(botID int) {
     }
     if engine.isAlgae(bot.Location) {
         if engine.isPoison(bot.Location) {
-            engine.gl.Log(GameLogError, "botID=%d has harvested a poisonous algae\n", botID)
+            engine.gl.Log(GameLogDebug, fmt.Sprintf("botID=%d has harvested a poisonous algae", botID))
             engine.KillBot(botID)
         }
         engine.Grid[bot.Location.X][bot.Location.Y].HasAlgae = false
@@ -395,7 +399,7 @@ func (engine *GameEngine) harvestAlgae(botID int) {
         bot.AlgaeHeld += 1
         bot.Energy -= EnergyDB["HARVEST"].Ability
     } else {
-        engine.gl.Log(GameLogError, "botID=%d attempted to harvest empty location\n", botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to harvest empty location", botID))
     }
 }
 
@@ -404,9 +408,9 @@ func (engine *GameEngine) poisonAlgae(botID int) {
     if engine.isAlgae(bot.Location) {
         engine.Grid[bot.Location.X][bot.Location.Y].IsPoison = true
         engine.AlgaeCount--
-        engine.gl.Log(GameLogGameAction, "botID=%d has poisoned algae at (%d %d)\n", botID, bot.Location.X, bot.Location.Y)
+        engine.gl.Log(GameLogDebug, fmt.Sprintf("botID=%d has poisoned algae at (%d %d)", botID, bot.Location.X, bot.Location.Y))
     } else {
-        engine.gl.Log(GameLogError, "botID=%d attempted to poison empty location\n", botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to poison empty location", botID))
     }
     bot.Energy -= EnergyDB["POISON"].Ability
 }
@@ -419,7 +423,7 @@ func (engine *GameEngine) startLockPick(botID int) {
         engine.Banks[bankID].LockPickBotID = botID
         bot.Energy -= EnergyDB["LOCKPICK"].Ability
     } else {
-        engine.gl.Log(GameLogError, "botID=%d attempted to LockPick too far from a bank\n", botID)
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to LockPick too far from a bank", botID))
     }
 }
 
@@ -436,13 +440,13 @@ func (engine *GameEngine) startDeposit(botID int) {
             bank.DepositAmount = bot.AlgaeHeld
             bot.AlgaeHeld = 0
             bot.Energy -= EnergyDB["DEPOSIT"].Ability
-            engine.gl.Log(GameLogError, "botID=%d attempted to deposit at bank already undergoing a deposit\n", botID)
+            engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to deposit at bank already undergoing a deposit", botID))
         } else {
-            engine.gl.Log(GameLogError, "botID=%d attempted to deposit at bank not owned by them\n", botID)
+            engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to deposit at bank not owned by them", botID))
         }
     } else {
-        engine.gl.Log(GameLogError, "botID=%d attempted to deposit too far from a bank\n", botID)
-    } 
+        engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to deposit too far from a bank", botID))
+    }
 }
 
 func (engine *GameEngine) isNearBank(botID int) (bool, int) {
@@ -481,7 +485,7 @@ func (engine *GameEngine) getBot(botID int) *Bot {
     if bot, ok := engine.AllBots[botID]; ok {
         return bot
     }
-    engine.gl.Log(GameLogError, "botID=%d does not exist\n", botID)
+    engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d does not exist", botID))
     return nil
 }
 

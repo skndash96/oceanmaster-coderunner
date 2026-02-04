@@ -3,98 +3,98 @@ import json
 import sys
 import types
 
-from oceanmaster.api.game_api import GameAPI
+from oceanmaster.api import GameAPI
 from oceanmaster.models.player_view import PlayerView
-from submission import spawn_policy
+from oceanmaster.context.bot_context import BotContext
+from oceanmaster.botbase import BotController
+from oceanmaster.constants import Ability
+from submission import spawn_policy # in sandbox submission dir will present and main.py inside represents the user code
 
+class _EngineState:
+    def __init__(self):
+        self.bot_strategies: dict[int, BotController] = {}
+        self.spawn_policy = None
 
-def player_view_from_dict(data):
-    view = PlayerView()
-    view.tick = data["tick"]
-    view.scraps = data["scraps"]
-    view.algae = data["algae"]
-    view.bot_count = data["bot_count"]
-    view.max_bots = data["max_bots"]
-    view.width = data["width"]
-    view.height = data["height"]
+_STATE = _EngineState()
 
-    # ---------------- BOTS ----------------
-    from oceanmaster.models.bot import Bot
-    from oceanmaster.models.point import Point
+def play(api: GameAPI):
+    # print(
+    #     f"[ENGINE] tick={api.get_tick()} active={list(_STATE.bot_strategies.keys())}",
+    #     file=sys.stderr,
+    # )
 
-    view.bots = []
-    for b in data["bots"]:
-        bot = Bot()
-        bot.id = b["id"]
-        bot.owner_id = b["owner_id"]
-        bot.location = Point(**b["location"])
-        bot.energy = b["energy"]
-        bot.scraps = b["scraps"]
-        bot.abilities = b["abilities"]
-        bot.algae_held = b["algae_held"]
-        view.bots.append(bot)
+    # ---- LOAD SPAWN POLICY ONCE ----
+    if _STATE.spawn_policy is None:
+        _STATE.spawn_policy = spawn_policy
 
-    # ---------------- VISIBLE ENTITIES ----------------
-    from oceanmaster.models.visible_entities import VisibleEntities
-    from oceanmaster.models.visible_scrap import VisibleScrap
+    spawns: dict[str, dict] = {}
+    actions: dict[str, dict] = {}
 
-    view.visible_entities = VisibleEntities()
-    view.visible_entities.enemies = []  # filled later by backend
-    view.visible_entities.scraps = []
+    # ---- SPAWN PHASE (EVERY TICK) ----
+    for spec in _STATE.spawn_policy(api):
+        strategy_cls = spec["strategy"]
 
-    for s in data["visible_entities"]["scraps"]:
-        scrap = VisibleScrap()
-        scrap.location = Point(**s["location"])
-        scrap.amount = s["amount"]
-        view.visible_entities.scraps.append(scrap)
+        if not issubclass(strategy_cls, BotController):
+            raise TypeError(
+                f"Invalid strategy class in spawn_policy: {strategy_cls}"
+            )
 
-    # ---------------- PERMANENT ENTITIES ----------------
-    from oceanmaster.models.permanent_entities import PermanentEntities
-    from oceanmaster.models.bank import Bank
-    from oceanmaster.models.energy_pad import EnergyPad
-    from oceanmaster.models.algae import Algae
+        abilities: list[Ability] = list(strategy_cls.ABILITIES)
+        abilities += spec.get("extra_abilities", [])
+        abilities = list(dict.fromkeys(abilities))
 
-    view.permanent_entities = PermanentEntities()
+        if api.view.bot_count >= api.view.max_bots:
+            continue
 
-    view.permanent_entities.banks = []
-    for b in data["permanent_entities"]["banks"]:
-        bank = Bank()
-        bank.id = b["id"]
-        bank.location = Point(**b["location"])
-        bank.deposit_occuring = b["deposit_occuring"]
-        bank.deposit_amount = b["deposit_amount"]
-        bank.deposit_owner = b["deposit_owner"]
-        bank.depositticksleft = b["depositticksleft"]
-        view.permanent_entities.banks.append(bank)
+        bot_id = str(len(spawns))
 
-    view.permanent_entities.energypads = []
-    for e in data["permanent_entities"]["energypads"]:
-        pad = EnergyPad()
-        pad.id = e["id"]
-        pad.location = Point(**e["location"])
-        pad.available = e["available"]
-        pad.ticksleft = e["ticksleft"]
-        view.permanent_entities.energypads.append(pad)
+        spawns[bot_id] = {
+            "Ability": [a.value for a in abilities],
+            "location": {"x": spec["location"], "y": 0},
+        }
+        _STATE.bot_strategies[int(bot_id)] = strategy_cls(None)
 
-    view.permanent_entities.walls = [
-        Point(**w) for w in data["permanent_entities"]["walls"]
-    ]
+    # ---- ACTION PHASE ----
+    alive_ids: set[int] = set()
 
-    view.permanent_entities.algae = []
-    for a in data["permanent_entities"]["algae"]:
-        algae = Algae()
-        algae.location = Point(**a["location"])
-        algae.is_poison = a["is_poison"]
-        view.permanent_entities.algae.append(algae)
+    for bot in api.get_my_bots():
+        alive_ids.add(bot.id)
 
-    return view
+        strategy = _STATE.bot_strategies.get(bot.id)
+        if strategy is None:
+            raise RuntimeError(
+                f"Bot {bot.id} exists without a registered strategy."
+            )
 
+        ctx = BotContext(api, bot)
+        strategy.ctx = ctx
+
+        try:
+            action = strategy.act()
+        except Exception as exc:
+            import traceback
+            print(
+                f"[ENGINE] Error in bot {bot.id}: {exc}\n{traceback.format_exc()}",
+                file=sys.stderr,
+            )
+            action = None
+
+        if action is not None:
+            actions[str(bot.id)] = action.to_dict()
+
+    # ---- CLEANUP PHASE ----
+    for bot_id in list(_STATE.bot_strategies.keys()):
+        if bot_id not in alive_ids:
+            del _STATE.bot_strategies[bot_id]
+
+    return {
+        "tick": api.get_tick(),
+        "spawns": spawns,
+        "actions": actions,
+    }
 
 def main():
-    from oceanmaster.wrapper import play
-
-    # Handshake
-    print(json.dumps("__READY_V1__"), flush=True)
+    print("\"__READY_V1__\"", flush=True)
 
     while True:
         line = sys.stdin.readline()
@@ -102,12 +102,15 @@ def main():
             break
 
         data = json.loads(line)
-        view = player_view_from_dict(data)
-        api = GameAPI(view)
 
-        out = play(api, spawn_policy)
+        view = PlayerView.from_dict(data)
+
+        api = GameAPI(view)
+        out = play(api)
+
         print(json.dumps(out))
         sys.stdout.flush()
+
 
 if __name__ == "__main__":
     main()

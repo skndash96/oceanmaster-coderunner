@@ -23,10 +23,11 @@ type GameLog struct {
 type GameLogType string
 
 const (
-	GameLogDebug      GameLogType = "DEBUG"
-	GameLogError      GameLogType = "ERROR"
-	GameLogGameState  GameLogType = "STATE"
-	GameLogGameAction GameLogType = "ACTION"
+	GameLogDebug    GameLogType = "DEBUG"
+	GameLogError    GameLogType = "ERROR"
+	GameLogWarn     GameLogType = "WARNs"
+	GameLogGameView GameLogType = "VIEW"
+	GameLogGameMove GameLogType = "MOVE"
 )
 
 func NewGameLogger(w io.Writer) *GameLogger {

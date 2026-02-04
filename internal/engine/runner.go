@@ -77,7 +77,7 @@ func (m *Match) Simulate(cfg *config.Config) error {
 	)
 
 	for {
-		m.gl.Log(GameLogGameState, ge.getGameView())
+		m.gl.Log(GameLogGameView, ge.getGameView())
 
 		turnCtx, cancelTurnCtx := context.WithTimeout(matchCtx, time.Duration(cfg.JailTickTimeoutMS)*time.Millisecond)
 
@@ -97,6 +97,7 @@ func (m *Match) Simulate(cfg *config.Config) error {
 		if turnErr != nil {
 			// should i end the match as failed?
 			// or skip turn and wait till N consecutive turn errors to end the match?
+			// TODO: declare other player as winner
 			if isP1Turn {
 				return fmt.Errorf("p1 turn: %w", turnErr)
 			} else {
@@ -104,7 +105,7 @@ func (m *Match) Simulate(cfg *config.Config) error {
 			}
 		}
 
-		m.gl.Log(GameLogGameAction, move)
+		m.gl.Log(GameLogGameMove, move)
 
 		ge.UpdateState(move)
 

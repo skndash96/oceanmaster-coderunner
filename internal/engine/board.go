@@ -24,7 +24,6 @@ type GameEngine struct {
 type Bot struct {
     ID      int
     OwnerID int // 0 = Player A, 1 = Player B
-    //    X, Y          int
     Location      Point
     Energy        float64
     Scraps        int
@@ -182,7 +181,6 @@ func InitGameEngine(gl *GameLogger) *GameEngine {
     ge.initBanks()
     ge.initPads()
     ge.generateBoard()
-    ge.gl.Log(GameLogGameState, "Game Map generated successfully\n")
     return ge
 }
 
@@ -230,7 +228,7 @@ func (ge *GameEngine) generateBoard() {
             if (((x == 6 || x == 13) && (y < 6 && y > 2 || y > 13 && y < 17)) || ((y == 6 || y == 13) && (x < 6 && x > 2 || x > 13 && x < 17))){
                 ge.Grid[x][y].IsWall = true
                 ge.Walls = append(ge.Walls, Point{x, y})
-                
+
             } else if roll < 0.15 {
                 ge.Grid[x][y].HasAlgae = true
                 ge.AlgaeCount++
