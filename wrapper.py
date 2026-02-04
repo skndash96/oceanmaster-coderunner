@@ -1,34 +1,30 @@
 # main.py
 import json
 import sys
-import types
+from typing import Callable
 
 from oceanmaster.api import GameAPI
 from oceanmaster.models.player_view import PlayerView
 from oceanmaster.context.bot_context import BotContext
 from oceanmaster.botbase import BotController
 from oceanmaster.constants import Ability
-from submission import spawn_policy # in sandbox submission dir will present and main.py inside represents the user code
+from submission import spawn_policy as _spawn_policy # in sandbox submission dir will present and main.py inside represents the user code
 
-class _EngineState:
+class _WrapperState:
     def __init__(self):
         self.bot_strategies: dict[int, BotController] = {}
-        self.spawn_policy = None
+        self.spawn_policy: Callable[[GameAPI], list[dict]] = _spawn_policy
+        self.curr_bot_id: int = -1
 
-_STATE = _EngineState()
+_STATE = _WrapperState()
 
 def play(api: GameAPI):
-    # print(
-    #     f"[ENGINE] tick={api.get_tick()} active={list(_STATE.bot_strategies.keys())}",
-    #     file=sys.stderr,
-    # )
-
-    # ---- LOAD SPAWN POLICY ONCE ----
-    if _STATE.spawn_policy is None:
-        _STATE.spawn_policy = spawn_policy
-
+    tick = api.get_tick()
     spawns: dict[str, dict] = {}
     actions: dict[str, dict] = {}
+
+    if _STATE.curr_bot_id == -1:
+        _STATE.curr_bot_id = api.view.bot_id_seed
 
     # ---- SPAWN PHASE (EVERY TICK) ----
     for spec in _STATE.spawn_policy(api):
@@ -39,18 +35,18 @@ def play(api: GameAPI):
                 f"Invalid strategy class in spawn_policy: {strategy_cls}"
             )
 
-        abilities: list[Ability] = list(strategy_cls.ABILITIES)
-        abilities += spec.get("extra_abilities", [])
-        abilities = list(dict.fromkeys(abilities))
+        abilities = strategy_cls.ABILITIES
 
-        if api.view.bot_count >= api.view.max_bots:
-            continue
+        # it's up to the engine to limit
+        # if api.view.bot_count >= api.view.max_bots:
+        #     continue
 
-        bot_id = str(len(spawns))
+        bot_id = _STATE.curr_bot_id
+        _STATE.curr_bot_id += 1
 
-        spawns[bot_id] = {
-            "Ability": [a.value for a in abilities],
-            "location": {"x": spec["location"], "y": 0},
+        spawns[str(bot_id)] = {
+            "abilities": abilities,
+            "location": {"x": 0, "y": spec["location"]},
         }
         _STATE.bot_strategies[int(bot_id)] = strategy_cls(None)
 
@@ -74,7 +70,7 @@ def play(api: GameAPI):
         except Exception as exc:
             import traceback
             print(
-                f"[ENGINE] Error in bot {bot.id}: {exc}\n{traceback.format_exc()}",
+                f"[USER_CODE] Error in bot {bot.id}: {exc}\n{traceback.format_exc()}",
                 file=sys.stderr,
             )
             action = None
@@ -83,19 +79,19 @@ def play(api: GameAPI):
             actions[str(bot.id)] = action.to_dict()
 
     # ---- CLEANUP PHASE ----
-    for bot_id in list(_STATE.bot_strategies.keys()):
-        if bot_id not in alive_ids:
-            del _STATE.bot_strategies[bot_id]
+    # i dont think we have to clean??
+    # for bot_id in list(_STATE.bot_strategies.keys()):
+    #     if bot_id not in alive_ids:
+    #         del _STATE.bot_strategies[bot_id]
 
     return {
-        "tick": api.get_tick(),
+        "tick": tick,
         "spawns": spawns,
         "actions": actions,
     }
 
 def main():
     print("\"__READY_V1__\"", flush=True)
-
     while True:
         line = sys.stdin.readline()
         if not line:

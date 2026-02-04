@@ -25,7 +25,7 @@ type GameLogType string
 const (
 	GameLogDebug    GameLogType = "DEBUG"
 	GameLogError    GameLogType = "ERROR"
-	GameLogWarn     GameLogType = "WARNs"
+	GameLogWarn     GameLogType = "WARN"
 	GameLogGameView GameLogType = "VIEW"
 	GameLogGameMove GameLogType = "MOVE"
 )

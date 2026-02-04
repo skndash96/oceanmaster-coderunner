@@ -8,6 +8,7 @@ services:
     privileged: true
     volumes:
       - ./.submissions:/submissions
+      - ./wrapper.py:/srv/wrapper.py
     deploy:
       resources:
         limits:

@@ -7,6 +7,8 @@ import (
 // Stores all information availlable in a game
 type GameEngine struct {
 	Ticks          int
+	BotIDSeed      [2]int
+	MaxBots        int
 	Grid           [20][20]Tile
 	AllBots        map[int]*Bot  //Map of Bot structures, key is its ID
 	Scraps         [2]int        // 0 -> player A, 1 -> player B
@@ -109,9 +111,9 @@ type GameView struct {
 
 type PlayerView struct {
 	Tick              int               `json:"tick"`   //json tag
+	BotIDSeed         int		            `json:"bot_id_seed"`
 	Scraps            int               `json:"scraps"` //e.g value of Scraps variable will be set to value of scraps in json
 	Algae             int               `json:"algae"`
-	BotCount          int               `json:"bot_count"`
 	MaxBots           int               `json:"max_bots"`
 	Width             int               `json:"width"`
 	Height            int               `json:"height"`
@@ -150,7 +152,7 @@ type PlayerMoves struct {
 }
 
 type SpawnCmd struct {
-	Abilities []string `json:"spawns"`
+	Abilities []string `json:"abilities"`
 	Location  Point    `json:"location"`
 }
 
@@ -163,6 +165,8 @@ type ActionCmd struct {
 func InitGameEngine(gl *GameLogger) *GameEngine {
 	ge := &GameEngine{
 		Ticks:  1,
+		BotIDSeed: [2]int{100,200},
+		MaxBots: 50,
 		Grid:   [20][20]Tile{},
 		Scraps: [2]int{},
 

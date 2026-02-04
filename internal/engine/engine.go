@@ -17,7 +17,6 @@ const (
     BankDepositTime   = 100
     BankDepositRange  = 4
     ScoutRadius       = 4
-    MAXBOTS           = 50
     BOARDWIDTH        = 20
     BOARDHEIGHT       = 20
     MAXALGAEHELD      = 5
@@ -34,10 +33,22 @@ func (engine *GameEngine) UpdateState(move PlayerMoves) {
     playerID := engine.currentPlayerID()
 
     for botID, spawnCmd := range move.Spawns {
+    		// TODO: critical, check botID <= engine.BotIDSeed[playerID] + engine.MaxBots[playerID]
+      	if playerID == 1 {
+       			// correct?
+       			spawnCmd.Location.X = 19
+       	}
         engine.spawnBot(spawnCmd, playerID, botID)
     }
 
     for botID, actionCmd := range move.Actions {
+    		if playerID == 1 {
+						if actionCmd.Direction == "NORTH" {
+							actionCmd.Direction = "SOUTH"
+						} else if actionCmd.Direction == "SOUTH" {
+							actionCmd.Direction = "NORTH"
+						}
+        }
         engine.actionBot(botID, actionCmd)
     }
     engine.TickPermanentEntities()
@@ -176,7 +187,7 @@ func (engine *GameEngine) actionBot(botID int, action ActionCmd) {
     }
 }
 
-func incrementLocation(loc Point, direction string) Point {
+func incrementLocation(loc Point, direction string) (Point, bool) {
     point := loc
     switch direction {
     case "NORTH":
@@ -188,7 +199,10 @@ func incrementLocation(loc Point, direction string) Point {
     case "WEST":
         point.X--
     }
-    return point
+    if point.X < 0 || point.Y < 0 || point.X >= 19 || point.Y >= 19 {
+        return point, false
+    }
+    return point, true
 }
 
 func (engine *GameEngine) moveBot(botID int, direction string) {
@@ -347,7 +361,11 @@ func (engine *GameEngine) validateMove(botID int, move ActionCmd) (bool, float64
     }
 
     if move.Direction != "NULL" {
-        point := incrementLocation(bot.Location, move.Direction)
+        point, ok := incrementLocation(bot.Location, move.Direction)
+        if !ok {
+            engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to move out of bounds at (%d %d)", botID, point.X, point.Y))
+            return false, energyCost
+        }
         if engine.LocationOccupied(point) {
             engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d attempted to move at Occupied Location at (%d %d)", botID, point.X, point.Y))
             return false, energyCost
@@ -485,7 +503,7 @@ func (engine *GameEngine) getBot(botID int) *Bot {
     if bot, ok := engine.AllBots[botID]; ok {
         return bot
     }
-    engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d does not exist", botID))
+    // engine.gl.Log(GameLogWarn, fmt.Sprintf("botID=%d does not exist", botID))
     return nil
 }
 
@@ -519,8 +537,8 @@ func (engine *GameEngine) getState(playerID int) PlayerView {
         Tick:            engine.Ticks,
         Scraps:          engine.Scraps[playerID],
         Algae:           engine.PermanentAlgae[playerID],
-        BotCount:        len(playerBots),
-        MaxBots:         MAXBOTS,
+        BotIDSeed:       engine.BotIDSeed[playerID],
+        MaxBots:         engine.MaxBots,
         Width:           BOARDWIDTH,
         Height:          BOARDHEIGHT,
         Bots:            playerBots,
@@ -553,7 +571,7 @@ func (engine *GameEngine) getGameView() GameView {
         Scraps:   [2]int{engine.Scraps[PlayerOne], engine.Scraps[PlayerTwo]},
         Algae:    [2]int{engine.PermanentAlgae[PlayerOne], engine.PermanentAlgae[PlayerTwo]},
         BotCount: len(engine.AllBots),
-        MaxBots:  MAXBOTS,
+        MaxBots:  engine.MaxBots,
         Width:    BOARDWIDTH,
         Height:   BOARDHEIGHT,
         AllBots:  allBots,

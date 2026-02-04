@@ -7,7 +7,7 @@ import readline from "readline";
 /* ----------------------------- Rendering ----------------------------- */
 
 function printState(view) {
-  console.clear();
+  // console.clear();
   console.log("=".repeat(80));
   console.log(`TICK ${view.tick}`);
   console.log("=".repeat(80));
@@ -93,13 +93,13 @@ function printState(view) {
 
 function printLog(entry) {
   if (entry.typ === "WARN") {
-    console.log("\x1b[33m[WARN]\x1b[0m", entry.msg.join(" "));
+    console.log("\x1b[33m[WARN]\x1b[0m", entry.msg.join(" "), entry.tim);
   } else if (entry.typ === "ERROR") {
-    console.log("\x1b[31m[ERROR]\x1b[0m", entry.msg.join(" "));
+    console.log("\x1b[31m[ERROR]\x1b[0m", entry.msg.join(" "), entry.tim);
   } else if (entry.typ === "DEBUG") {
-    console.log("\x1b[36m[DEBUG]\x1b[0m", entry.msg.join(" "));
+    console.log("\x1b[36m[DEBUG]\x1b[0m", entry.msg.join(" "), entry.tim);
   } else if (entry.typ === "MOVE") {
-    console.log("[MOVE]", JSON.stringify(entry.msg[0]));
+    console.log("\x1b[36m[MOVE]\x1b[0m", JSON.stringify(entry.msg[0]), entry.tim);
   }
 }
 
@@ -109,21 +109,21 @@ function loadTicks(logPath) {
   const lines = fs.readFileSync(logPath, "utf8").trim().split("\n");
 
   const ticks = [];
-  let current = null;
+  let current = {
+    view: null,
+    logs: []
+  };
 
-  let i = 0
   for (const line of lines) {
-    i += 1;
     const entry = JSON.parse(line);
 
-    if (i < 20) console.log(entry)
     if (entry.typ === "VIEW") {
       if (current) ticks.push(current);
       current = {
         view: entry.msg[0],
         logs: [],
       };
-    } else if (current) {
+    } else {
       current.logs.push(entry);
     }
   }
@@ -166,11 +166,14 @@ function showTick() {
   for (const log of tick.logs) {
     printLog(log);
   }
-  console.log(`\n[Tick ${idx + 1}/${ticks.length}]`);
+
+  if (tick.view) console.log(`\n[Tick ${idx}/${ticks.length-1}]`);
 }
 
-console.log(`Loaded ${ticks.length} ticks.`);
+console.log(`Loaded ${ticks.length-1} ticks.`);
 console.log("Commands: NEXT [n], BACK [n], START, END, QUIT\n");
+
+showTick(0);
 
 rl.prompt();
 
@@ -195,7 +198,7 @@ rl.on("line", (line) => {
   } else if (cmd === "QUIT" || cmd === "Q") {
     process.exit(0);
   } else {
-    console.log("Unknown command.");
+    // console.log("Unknown command.");
   }
 
   rl.prompt();
