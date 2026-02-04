@@ -199,7 +199,7 @@ func incrementLocation(loc Point, direction string) (Point, bool) {
     case "WEST":
         point.X--
     }
-    if point.X < 0 || point.Y < 0 || point.X >= 19 || point.Y >= 19 {
+    if point.X < 0 || point.Y < 0 || point.X > 19 || point.Y > 19 {
         return point, false
     }
     return point, true
